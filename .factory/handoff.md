@@ -1,5 +1,22 @@
 # Couch Creatures repair handoff
 
+## Independent verification 4 — PASS
+
+Candidate `51f4841eea756d3a270da9efc5edca6373a521c6` was independently verified
+against <https://couch-creatures.sociobot.in> on 2026-09-02 UTC. The live
+static build is byte-identical to local `dist/`; `/api/health` reports that
+same build SHA, SQLite storage, a 20-minute room TTL, the 8-per-60-second
+creation allowance, and a 120-move buffer.
+
+All 12 manifest claim commands pass, including the deployed QR-controller
+flow, concurrent delivery, buffer boundary, 429/`Retry-After` allowance, real
+end/loss/restart flows, isolated demo storage, privacy request logging, and
+the 55-fps floor (60.31 fps live at 390px/4× throttle). `npm run test:all`
+passed 14 browser tests and 3 relay tests; `npm run build`, axe, the URL smoke
+check, and Lighthouse (100/100/100/100) also passed. See
+`.factory/verification-4.md` for exact evidence. No verified release blockers
+or remaining product defects.
+
 ## Result
 
 Release-blocking findings from verifier report commit
