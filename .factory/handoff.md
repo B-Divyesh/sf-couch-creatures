@@ -34,3 +34,5 @@ The static deployment supports four local keyboard/touch controllers. The `/cont
 ## Deploy
 
 Deploy `dist/` to `sf-couch-creatures` with its Static Web Apps deployment token. `staticwebapp.config.json` is included in the output and configures known application routes, security headers, immutable asset caching, and the styled `/404.html` response.
+
+Deployment completed on 2026-09-02 UTC to `https://couch-creatures.sociobot.in` and Azure default host `https://white-hill-0d85ff610.6.azurestaticapps.net`. Live verification passed: the URL smoke check saw zero console errors, and `GET /not-a-route` returned HTTP 404. The deployed hashed JavaScript returned `Cache-Control: public, max-age=31536000, immutable`.
