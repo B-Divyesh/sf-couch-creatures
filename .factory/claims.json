@@ -1,0 +1,37 @@
+[
+  {
+    "id": "end-screen",
+    "claim": "A full rescue reaches a group postcard",
+    "where": "game end screen, README",
+    "test": "npm test -- --grep @claim:end-screen",
+    "sandbox": "fresh browser context at /demo; scripted keyboard play completes the seeded three-habitat run"
+  },
+  {
+    "id": "restart-resets",
+    "claim": "Play again starts a fresh run",
+    "where": "group postcard",
+    "test": "npm test -- --grep @claim:restart-resets",
+    "sandbox": "fresh demo game; complete run, press Play again, assert habitat one and zero rescues"
+  },
+  {
+    "id": "settings-persist",
+    "claim": "Assist and sound settings stay on this device",
+    "where": "pause menu",
+    "test": "npm test -- --grep @claim:settings-persist",
+    "sandbox": "fresh browser context; change assist setting, reload, assert selected state"
+  },
+  {
+    "id": "local-only",
+    "claim": "No account or child data is collected",
+    "where": "landing facts, privacy page, README",
+    "test": "npm test -- --grep @claim:local-only",
+    "sandbox": "record all requests during a demo run; assert every request is same-origin"
+  },
+  {
+    "id": "shared-input",
+    "claim": "Keyboard and touch pads both guide the rescue",
+    "where": "landing facts, game controls, README",
+    "test": "npm test -- --grep @claim:shared-input",
+    "sandbox": "fresh demo game; use D then the labelled player two touch control and assert the active rescue board remains playable"
+  }
+]

@@ -2,5 +2,8 @@ node_modules/
 dist/
 .env
 *.log
+test-results/
+playwright-report/
+*.tsbuildinfo
 graphify-out/
 .DS_Store
