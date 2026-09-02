@@ -1,48 +1,60 @@
-# Couch Creatures handoff
+# Couch Creatures verification handoff
 
-## What shipped
+## Status: FAIL
 
-- A complete, deterministic Canvas 2D rescue game with three habitats,
-  12 creatures, shared A/D and J/L lanes, large touch pads, pause/resume,
-  local assist and sound settings, and a group-postcard ending.
-- A one-click `/demo` sandbox using the `demo:couch-creatures:` storage
-  namespace, Reset demo, and Start for real controls.
-- Product routes for home, demo, privacy, terms, and a styled 404; static
-  deployment configuration, metadata, sitemap, robots, security headers, and
-  original generated visual artwork.
-- Accessibility checks in Playwright/Axe plus claim tests for completion,
-  replay, settings persistence, local-only requests, and both input modes.
+Independent QA was completed on 2026-09-02 for candidate
+`994b10c166bedb07ffdd44e775aeab048ff4bf84` at
+<https://couch-creatures.sociobot.in>. The live HTML and production assets are
+byte-identical to the candidate build. No product code was modified.
 
-## Verification
+The full evidence and severity-ranked defect list are in
+[`.factory/verification.md`](verification.md).
 
-Run from a clean checkout:
+## Release blockers
+
+- The homepage **Try it with sample data** action routes to `/demo` without
+  entering demo mode. It omits the banner and writes settings to the real
+  namespace; reload then switches namespaces and appears to lose them.
+- The game has no loss condition, hazards, randomized route layouts, or
+  creature traits. Replay begins from the identical canvas and fixed seed.
+- The advertised 8–12 minute run completed by normal keyboard play in 15.81
+  seconds.
+- The product advertises 2–4 players but implements only two. The brief's QR
+  phone-controller mode is absent.
+- Active rescue progress resets on refresh.
+- Public claims are missing from `.factory/claims.json`, several are false,
+  and several listed claim tests do not assert the promised behavior.
+
+## Verification summary
+
+- Mandatory cold first-read presentation: PASS.
+- `npm ci`: PASS.
+- Five exact claim commands after installation: PASS, one test each.
+- `npm test`: PASS, 6/6.
+- `npm run build`: PASS; TypeScript and Vite production build completed.
+- Live deterministic title → play → postcard → restart: reachable and reset
+  works.
+- Privacy request log: same-origin only; no console/page/request errors.
+- Security headers: CSP, HSTS, nosniff, and Referrer-Policy present.
+- Axe serious/critical: zero on five routes at desktop and 390 px.
+- Measured active-game frame rate: 60.20 fps under 4× CPU throttle at 390 px.
+- Lighthouse mobile: 100 Performance, 100 Accessibility, 96 Best Practices,
+  100 SEO; LCP 1.714 s and CLS 0.
+- Bundle: 15,030 B JS, 6,934 B CSS, 94,412 B WebP.
+
+Additional defects include a vertically stretched 358 × 800 landing image on
+mobile, undersized navigation/footer/demo targets, focus loss after SPA route
+changes, HTTP 200 for unknown routes, 30-second caching on hashed assets,
+incorrect social/icon dimensions, and vulnerable development dependencies.
+
+## Re-run
 
 ```sh
-npm install
+npm ci
 npm test
 npm run build
 ```
 
-Verified on 2026-09-02:
-
-- `npm test`: 6 Playwright tests passed.
-- `npm run build`: passed; output is `dist/` with `index.html` at its root.
-- Axe serious/critical checks passed on `/`, `/demo`, `/privacy`, and `/terms`.
-- Mobile visual smoke check: 390 × 844 viewport. The first screen shows the
-  rescue board and the sample-start action; touch controls remain 56px.
-- Lighthouse mobile categories: Performance 94, Accessibility 100, Best
-  Practices 96, SEO 100. The CLI wrote this report before its headless browser
-  process terminated, so the scores are recorded as a smoke measurement rather
-  than a stable CI artifact.
-- Built JavaScript is 15.01 KB raw / 5.58 KB gzip. Built CSS is 6.89 KB raw /
-  2.17 KB gzip. The hero/world image is 93 KB WebP.
-
-## Known gaps and next steps
-
-- Touch pads work on the shared screen. A true phone-as-controller path needs
-  a product-owned realtime signaling service; it is not included in this
-  static deployment. The game does not claim remote phone control.
-- The game has no sound effects yet; the persisted mute setting is present so
-  audio can be added after a user gesture without changing the privacy model.
-- The generated source PNG is retained in `assets/src/`; the shipped image is
-  the optimized `public/moss-rescue.webp`.
+For acceptance, repeat the primary homepage-to-demo journey in a fresh browser
+context and complete the game using the advertised player controls rather than
+the **Help herd creatures** test shortcut.
