@@ -1,50 +1,31 @@
 # Couch Creatures
 
-Guide shy creatures home in a gentle shared-screen game for families using one
-laptop or TV. A full rescue takes 8–12 minutes for 2–4 players. Use one shared
-keyboard or the on-screen touch pads. There are no accounts, purchases, ads,
-or player profiles.
+Guide shy creatures past moving clay storms in a nine-minute shared-screen rescue for two to four local players. Use one keyboard or the labelled touch pads. The game has no accounts, ads, purchases, player profiles, or networked play.
 
-Try the isolated sample game at `/demo`. It uses the `demo:couch-creatures:`
-localStorage namespace. Reset demo removes its settings. Real play only keeps
-optional assist and sound settings in your browser.
+Open `/demo` or choose **Try it with sample data** on the homepage. Demo mode is an isolated, seeded run using only `demo:couch-creatures:*` browser storage. Its banner can reset the sample or discard it and return to real play.
 
-## Run it
+## Play
+
+Each run has three habitats and three 180-second shelter windows. Keep two creatures in lantern light while avoiding moving clay storms. Three storm strikes end the route. A full run takes nine minutes; Escape pauses it, and refreshing restores the active run as paused.
+
+Player one uses A/D, player two J/L, player three F/H, and player four Left/Right arrows. The game board also includes two 58px touch buttons for each player.
+
+## Run, test, and build
 
 ```sh
-npm install
+npm ci
 npm run dev
-```
-
-Open `http://localhost:5173/demo` to start the three-habitat rescue. Player one
-uses A/D. Player two uses J/L. On a touch screen, use the labelled pads below
-the rescue board. Escape pauses a run. The Help herd creatures control is an
-accessible assist option.
-
-## Test and build
-
-```sh
 npm test
 npm run build
 ```
 
-`npm run build` creates the static site in `dist/`, ready for static deployment.
-The Playwright suite checks every product claim in `.factory/claims.json`.
+Open `http://localhost:5173/`. `npm run build` creates `dist/` for static deployment. The Playwright suite covers every public claim listed in `.factory/claims.json`.
 
-## Product details
+## Privacy and deployment
 
-The game is for parents, siblings, and children sharing one display. Each run
-has three habitats, four creatures per habitat, and a group postcard at the
-end. Route markings, creature colors, and weather vary by habitat. Settings
-stay local.
+All run recovery and assist settings remain in localStorage. Demo and real play use separate namespaces. The site makes no cross-origin requests during play. Deploy `dist/` to static hosting with the included `staticwebapp.config.json`; it sends security headers, cache rules for immutable assets, and a styled 404 response.
 
-The visual direction, generated-art provenance, and accessibility decisions are
-in `.factory/design.md`. The demo contract is in `.factory/demo.md`.
-
-## Deploy
-
-Deploy the contents of `dist/` to static hosting. The included
-`staticwebapp.config.json` provides SPA navigation fallback and security headers.
+Visual direction and original-image provenance are recorded in `.factory/design.md`. The demo details are in `.factory/demo.md`.
 
 ## License
 

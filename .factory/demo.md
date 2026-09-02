@@ -1,7 +1,7 @@
 # Demo sandbox
 
-Open `/demo` or press **Try it with sample data**. The demo uses the deterministic
-seed `moss-postcard` and stores only settings under the `demo:couch-creatures:`
-localStorage prefix. The banner's **Reset demo** button clears that prefix and
-starts the same sample run again. **Start for real** exits demo mode and does
-not copy demo state. No player names or child data are collected.
+Open `/demo` directly or use **Try it with sample data** on `/`. The demo is the fixed seed `moss-postcard-17`; it has three habitats, four creature traits, and moving hazard layouts derived from that seed.
+
+Every demo key starts with `demo:couch-creatures:`. This includes assist mode and the recoverable active run. No real-game key is read or written while the demo banner is visible. **Reset demo** deletes only that prefix and begins the same seed again. **Start for real** deletes the demo prefix and returns to the non-demo homepage.
+
+The four labelled touch pads and the shared keyboard are included in the demo. No account, room, or network connection is required.

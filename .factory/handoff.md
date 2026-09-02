@@ -1,60 +1,36 @@
-# Couch Creatures verification handoff
+# Couch Creatures repair handoff
 
-## Status: FAIL
+## Completed
 
-Independent QA was completed on 2026-09-02 for candidate
-`994b10c166bedb07ffdd44e775aeab048ff4bf84` at
-<https://couch-creatures.sociobot.in>. The live HTML and production assets are
-byte-identical to the candidate build. No product code was modified.
+Repaired verifier findings from `f5dd412` and rebuilt the playable contract.
 
-The full evidence and severity-ranked defect list are in
-[`.factory/verification.md`](verification.md).
+- The homepage sample action now derives demo mode from the current route. It immediately shows the demo banner and writes only `demo:couch-creatures:*`; reload preserves that namespace.
+- Replaced the 16-second herd shortcut with a deterministic fixed-timestep three-habitat game: seeded creature traits/weather/hazards, three 180-second shelter windows (nine minutes), moving clay storms, a three-strike loss state, retry, and a fresh-seed replay.
+- Added player three/four keyboard input (F/H and Left/Right) and four labelled touch-control pairs.
+- Persisted active run snapshots locally and restore them paused after refresh. Assist now has its stated effect; the inert sound setting was removed.
+- Corrected mobile artwork sizing, route focus transfer, 44px interactive targets, Open Graph (1200×630) and apple-touch (180×180) assets, true-404 deployment configuration, and immutable hashed asset cache headers.
+- Updated Vite to 6.4.3; `npm audit` now reports zero vulnerabilities.
+- Added eight exact claims and observable Playwright regression coverage, including the primary `/` → `/demo` failure reported by QA.
 
-## Release blockers
+## Verification
 
-- The homepage **Try it with sample data** action routes to `/demo` without
-  entering demo mode. It omits the banner and writes settings to the real
-  namespace; reload then switches namespaces and appears to lose them.
-- The game has no loss condition, hazards, randomized route layouts, or
-  creature traits. Replay begins from the identical canvas and fixed seed.
-- The advertised 8–12 minute run completed by normal keyboard play in 15.81
-  seconds.
-- The product advertises 2–4 players but implements only two. The brief's QR
-  phone-controller mode is absent.
-- Active rescue progress resets on refresh.
-- Public claims are missing from `.factory/claims.json`, several are false,
-  and several listed claim tests do not assert the promised behavior.
-
-## Verification summary
-
-- Mandatory cold first-read presentation: PASS.
-- `npm ci`: PASS.
-- Five exact claim commands after installation: PASS, one test each.
-- `npm test`: PASS, 6/6.
-- `npm run build`: PASS; TypeScript and Vite production build completed.
-- Live deterministic title → play → postcard → restart: reachable and reset
-  works.
-- Privacy request log: same-origin only; no console/page/request errors.
-- Security headers: CSP, HSTS, nosniff, and Referrer-Policy present.
-- Axe serious/critical: zero on five routes at desktop and 390 px.
-- Measured active-game frame rate: 60.20 fps under 4× CPU throttle at 390 px.
-- Lighthouse mobile: 100 Performance, 100 Accessibility, 96 Best Practices,
-  100 SEO; LCP 1.714 s and CLS 0.
-- Bundle: 15,030 B JS, 6,934 B CSS, 94,412 B WebP.
-
-Additional defects include a vertically stretched 358 × 800 landing image on
-mobile, undersized navigation/footer/demo targets, focus loss after SPA route
-changes, HTTP 200 for unknown routes, 30-second caching on hashed assets,
-incorrect social/icon dimensions, and vulnerable development dependencies.
-
-## Re-run
+Run on 2026-09-02 UTC:
 
 ```sh
 npm ci
-npm test
+npm test -- --reporter=list
 npm run build
+npm audit --json
 ```
 
-For acceptance, repeat the primary homepage-to-demo journey in a fresh browser
-context and complete the game using the advertised player controls rather than
-the **Help herd creatures** test shortcut.
+Results: 9/9 Playwright tests passed, including all eight `@claim:` tests. The production build produced `dist/` with 17.54 KB raw JS (6.67 KB gzip) and 6.82 KB CSS (2.17 KB gzip). `npm audit` reports 0 vulnerabilities.
+
+`/opt/fleet/lib/verify-url.sh http://127.0.0.1:4174/ /tmp/couch-verify` passed: title, `lang`, one h1, main landmark, image alt text, and zero browser console errors. The Playwright suite additionally checked axe serious/critical findings at desktop and 390×844, route h1 focus, visible 44px targets, and the 3:2 mobile artwork ratio.
+
+## Known scope note
+
+The static deployment supports four local keyboard/touch controllers. The `/controller` route makes the static limitation explicit: it cannot create cross-device phone rooms without a product-owned realtime service. No third-party controller or network service was introduced, and this repository’s deployment class remains static.
+
+## Deploy
+
+Deploy `dist/` to `sf-couch-creatures` with its Static Web Apps deployment token. `staticwebapp.config.json` is included in the output and configures known application routes, security headers, immutable asset caching, and the styled `/404.html` response.

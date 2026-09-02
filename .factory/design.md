@@ -51,7 +51,9 @@ creatures and markings are procedural original drawings.
 ## Difficulty and content
 
 Every run contains three habitats: Drainway, Moss Court, and Window Garden.
-Each habitat needs 4 rescued creatures. A deterministic seed selects creature
-traits, weather, and one of 24 route hazard layouts (8 per habitat). Hazards
-gently push a creature away; assist mode slows them. A full run is designed for
-8–12 minutes with two players, and is completable solo.
+Each habitat has four creatures, seeded traits, weather, and three moving clay
+storms. The fixed demo seed is `moss-postcard-17`; non-demo routes use a fresh
+browser-generated seed. Each habitat lasts 180 seconds, giving a complete run
+three shelter windows (nine minutes). Three storm strikes create a recoverable
+loss state. Assist mode widens lantern light and slows storm strikes. Four
+local lanterns are available by keyboard and labelled touch pads.

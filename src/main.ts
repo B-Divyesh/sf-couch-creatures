@@ -1,146 +1,59 @@
 import './style.css';
 import './patch.css';
 
-type Route = '/' | '/demo' | '/privacy' | '/terms';
-type GamePhase = 'ready' | 'playing' | 'paused' | 'postcard';
-
-const habitats = [
-  { name: 'Drainway', weather: 'Warm drizzle', color: '#82b7b9' },
-  { name: 'Moss Court', weather: 'Breezy moss', color: '#b9d76c' },
-  { name: 'Window Garden', weather: 'Soft sun', color: '#db7250' }
-];
-
+type Route = '/' | '/demo' | '/privacy' | '/terms' | '/controller';
+type Phase = 'ready' | 'playing' | 'paused' | 'lost' | 'postcard';
+type Creature = { x: number; y: number; hue: string; trait: string; progress: number; wobble: number };
+type Hazard = { x: number; y: number; r: number; drift: number };
+type Snapshot = { phase: Phase; habitat: number; rescued: number; elapsed: number; strikes: number; lanterns: number[]; creatures: Creature[]; seed: string };
 const app = document.querySelector<HTMLDivElement>('#app')!;
-let isDemo = location.pathname === '/demo' || location.search.includes('demo=1');
+const habitats = ['Drainway', 'Moss Court', 'Window Garden'];
+const weather = ['Warm drizzle', 'Breezy moss', 'Soft sun', 'Puddle fog', 'Chalky wind', 'Moss light'];
+const playerKeys = [['a', 'd'], ['j', 'l'], ['f', 'h'], ['arrowleft', 'arrowright']];
+const playerColors = ['#b9d76c', '#db7250', '#82b7b9', '#f4efd9'];
+const testFast = sessionStorage.getItem('couch-creatures:test-fast') === '1';
 let activeGame: Game | null = null;
-const storeKey = (key: string) => `${isDemo ? 'demo:' : ''}couch-creatures:${key}`;
-
-function settings() {
-  return {
-    assist: localStorage.getItem(storeKey('assist')) === 'true',
-    mute: localStorage.getItem(storeKey('mute')) === 'true'
-  };
-}
-function saveSetting(key: 'assist' | 'mute', value: boolean) { localStorage.setItem(storeKey(key), String(value)); }
-function route(): Route | '404' {
-  return (['/', '/demo', '/privacy', '/terms'] as string[]).includes(location.pathname) ? location.pathname as Route : '404';
-}
-function go(path: Route) { history.pushState({}, '', path); render(); }
+function route(): Route | '404' { return (['/', '/demo', '/privacy', '/terms', '/controller'] as string[]).includes(location.pathname) ? location.pathname as Route : '404'; }
+function demoMode() { return route() === '/demo'; }
+function key(name: string) { return `${demoMode() ? 'demo:' : ''}couch-creatures:${name}`; }
+function readBool(name: string) { return localStorage.getItem(key(name)) === 'true'; }
+function setBool(name: string, value: boolean) { localStorage.setItem(key(name), String(value)); }
+function go(path: Route) { history.pushState({}, '', path); render(true); }
 function link(path: Route, label: string, cls = '') { return `<a class="${cls}" href="${path}" data-route>${label}</a>`; }
-
+function makeSeed() { return `moss-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`; }
+function hash(seed: string) { let n = 2166136261; for (const char of seed) n = Math.imul(n ^ char.charCodeAt(0), 16777619); return n >>> 0; }
+function rng(seed: string) { let n = hash(seed); return () => ((n = Math.imul(n ^ (n >>> 15), 1 | n)) ^ (n + Math.imul(n ^ (n >>> 7), 61 | n))) >>> 0 / 4294967296; }
 function shell(content: string, title: string, description: string) {
-  document.title = title;
-  document.querySelector('meta[name="description"]')?.setAttribute('content', description);
-  app.innerHTML = `
-    <a class="skip-link" href="#main">Skip to game</a>
-    <header class="site-header"><a class="wordmark" href="/" data-route aria-label="Couch Creatures home"><span aria-hidden="true">▰</span> Couch Creatures</a>
-      <nav aria-label="Main navigation">${link('/demo', 'Demo')}${link('/privacy', 'Privacy')}${link('/terms', 'Terms')}</nav></header>
-    ${isDemo ? `<aside class="demo-banner" aria-label="Demo status"><strong>Demo — sample data, nothing is saved</strong><button class="text-button" id="reset-demo">Reset demo</button><button class="text-button" id="start-real">Start for real</button></aside>` : ''}
-    <main id="main" tabindex="-1">${content}</main>
-    <footer><span>A gentle shared-screen rescue game.</span>${link('/privacy', 'Privacy')}${link('/terms', 'Terms')}<span>Built by Param Factory · v1.0.0</span><small>Artwork is AI-generated and original to Couch Creatures.</small></footer>
-    <div class="sr-only" id="route-announcer" aria-live="polite"></div>`;
+  document.title = title; document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  app.innerHTML = `<a class="skip-link" href="#main">Skip to game</a><header class="site-header"><a class="wordmark" href="/" data-route aria-label="Couch Creatures home"><span aria-hidden="true">▰</span> Couch Creatures</a><nav aria-label="Main navigation">${link('/demo', 'Demo')}${link('/controller', 'Phone controls')}${link('/privacy', 'Privacy')}${link('/terms', 'Terms')}</nav></header>${demoMode() ? `<aside class="demo-banner" aria-label="Demo status"><strong>Demo — sample data, nothing is saved</strong><button id="reset-demo" class="text-button">Reset demo</button><button id="start-real" class="text-button">Start for real</button></aside>` : ''}<main id="main" tabindex="-1">${content}</main><footer><span>A shared-screen creature rescue for 2–4 players.</span>${link('/privacy', 'Privacy')}${link('/terms', 'Terms')}<span>Built by Param Factory · v1.1.0</span><small>Artwork is AI-generated and original to Couch Creatures.</small></footer><div id="route-announcer" class="sr-only" aria-live="polite"></div>`;
   app.querySelectorAll<HTMLAnchorElement>('[data-route]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); go(a.getAttribute('href') as Route); }));
-  app.querySelector('#reset-demo')?.addEventListener('click', () => { Object.keys(localStorage).filter(k => k.startsWith('demo:couch-creatures:')).forEach(k => localStorage.removeItem(k)); go('/demo'); });
-  app.querySelector('#start-real')?.addEventListener('click', () => { isDemo = false; go('/'); });
-  requestAnimationFrame(() => { const h1 = document.querySelector<HTMLElement>('h1'); h1?.focus(); document.querySelector('#route-announcer')!.textContent = h1?.textContent || ''; });
+  app.querySelector('#reset-demo')?.addEventListener('click', () => { for (const item of Object.keys(localStorage)) if (item.startsWith('demo:couch-creatures:')) localStorage.removeItem(item); go('/demo'); });
+  app.querySelector('#start-real')?.addEventListener('click', () => { for (const item of Object.keys(localStorage)) if (item.startsWith('demo:couch-creatures:')) localStorage.removeItem(item); go('/'); });
 }
-
-function legalPage(kind: 'privacy' | 'terms') {
-  const privacy = kind === 'privacy';
-  shell(`<section class="legal"><p class="eyebrow">Couch Creatures</p><h1>${privacy ? 'Privacy for shared play' : 'Terms for Couch Creatures'}</h1>
-  ${privacy ? `<p>Couch Creatures does not ask for names, accounts, photos, contacts, or location.</p><h2>What stays on this device</h2><p>Your assist and sound choices stay in this browser. They are not sent anywhere.</p><h2>Demo mode</h2><p>The demo uses a separate local storage key. Reset demo clears it.</p><h2>Questions</h2><p>Email <a href="mailto:hello@sociobot.in">hello@sociobot.in</a> for privacy questions.</p>` : `<p>Couch Creatures is free to play. It is provided as-is for gentle shared play.</p><h2>Safe play</h2><p>An adult should choose what is suitable for their household. Do not use the game while walking or driving.</p><h2>No purchases</h2><p>This version has no purchases, ads, or paid features.</p><h2>Changes</h2><p>We may update the game or these terms. A new date will appear here.</p>`}</section>`, `${privacy ? 'Privacy' : 'Terms'} — Couch Creatures`, privacy ? 'How Couch Creatures keeps shared-play settings on your device.' : 'Terms for the Couch Creatures shared-screen game.');
-}
-
-function landing() {
-  shell(`<section class="game-layout" aria-labelledby="page-title">
-    <div class="intro-panel"><p class="eyebrow">Shared keyboard rescue</p><h1 id="page-title">Guide creatures home together</h1><p class="lead">For families sharing one screen, turn two keys into a calm creature rescue.</p>
-      <div class="actions">${link('/demo', 'Try it with sample data', 'button primary')}<span>Starts the three-habitat rescue.</span></div>
-      <ul class="facts"><li>No account or child data</li><li>Free to play</li><li>Keyboard and touch pads</li></ul>
-      <div class="control-note"><strong>Player one</strong> A / D &nbsp; <strong>Player two</strong> J / L<br><span>Move your lanterns. Nearby creatures follow them home.</span></div>
-    </div>
-    <figure class="route-art"><canvas id="landing-game" aria-label="A playable Couch Creatures rescue board preview. Use A and D for player one, and J and L for player two." role="img"></canvas><figcaption>Press A/D and J/L here, or start the sample rescue below.</figcaption></figure>
-  </section>
-  <section class="live-preview" aria-labelledby="preview-title"><div><p class="eyebrow">Play on this screen</p><h2 id="preview-title">Rescue board</h2><p>Move two lanterns along a route. Creatures trust nearby light and follow it to shelter.</p></div><button class="button primary" id="play-here">Start a local rescue</button></section>
-  <figure class="world-art"><img src="/moss-rescue.webp" width="1200" height="800" loading="lazy" decoding="async" alt="Three small creatures approach a mossy concrete shelter together."><figcaption>Every run changes the weather, creature traits, and route markings.</figcaption></figure>
-  <section class="steps" aria-labelledby="how-title"><h2 id="how-title">How shared play works</h2><ol><li><strong>Choose two lanes.</strong><span>Use A/D and J/L, or tap the two touch pads.</span></li><li><strong>Guide creatures.</strong><span>Stay close so shy creatures follow your lantern.</span></li><li><strong>Make a postcard.</strong><span>Finish three habitats for a group picture.</span></li></ol></section>
-  <section class="privacy-strip" aria-labelledby="not-title"><h2 id="not-title">What this game does not do</h2><p>It has no chat, ads, accounts, behavioral tracking, or competitive matchmaking. It only keeps optional settings in this browser.</p></section>`, 'Couch Creatures — Guide creatures home together', 'A gentle shared-screen rescue game for two to four players.');
-  activeGame = new Game(document.querySelector('#landing-game')!, () => {});
-  document.querySelector('#play-here')?.addEventListener('click', () => { isDemo = false; go('/demo'); });
-}
-
+function focusRoute() { requestAnimationFrame(() => { const heading = document.querySelector<HTMLElement>('h1'); if (heading) { heading.tabIndex = -1; heading.focus(); } const announce = document.querySelector('#route-announcer'); if (announce) announce.textContent = heading?.textContent || ''; }); }
 class Game {
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
-  phase: GamePhase = 'ready';
-  habitat = 0;
-  rescued = 0;
-  creatures: { x: number; y: number; hue: string; wobble: number }[] = [];
-  lanterns = [150, 420];
-  keys = new Set<string>();
-  last = 0; accumulator = 0; raf = 0;
-  assist = settings().assist; mute = settings().mute;
-  onUpdate: () => void;
-  resizeHandler = () => this.resize(); visibilityHandler = () => { this.last = 0; };
-  keyDownHandler = (e: KeyboardEvent) => { if (['a','d','j','l',' ','Escape'].includes(e.key.toLowerCase())) e.preventDefault(); if (e.key === 'Escape') this.togglePause(); else { this.keys.add(e.key.toLowerCase()); if (this.phase === 'ready' && e.key !== 'Escape') this.start(); } };
-  keyUpHandler = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
-  constructor(canvas: HTMLCanvasElement, onUpdate: () => void) { this.canvas = canvas; this.ctx = canvas.getContext('2d')!; this.onUpdate = onUpdate; this.reset(); this.resize(); addEventListener('resize', this.resizeHandler); document.addEventListener('visibilitychange', this.visibilityHandler); this.bind(); this.raf = requestAnimationFrame(t => this.frame(t)); }
-  reset() { this.habitat = 0; this.rescued = 0; this.lanterns = [145, 415]; this.makeCreatures(); this.phase = 'ready'; }
-  makeCreatures() { const colors = ['#d8aa58', '#82b7b9', '#db7250', '#f4efd9']; this.creatures = Array.from({ length: 4 }, (_, i) => ({ x: 130 + i * 55, y: 92 + ((i * 71 + this.habitat * 37) % 180), hue: colors[(i + this.habitat) % 4], wobble: i * 1.7 })); }
-  bind() {
-    addEventListener('keydown', this.keyDownHandler);
-    addEventListener('keyup', this.keyUpHandler);
-  }
+  canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; onUpdate: () => void; phase: Phase = 'ready'; habitat = 0; rescued = 0; elapsed = 0; strikes = 0; lanterns = [90, 230, 370, 510]; creatures: Creature[] = []; hazards: Hazard[] = []; seed: string; keys = new Set<string>(); last = 0; accumulator = 0; raf = 0; saveAt = 0; assist = readBool('assist'); readonly habitatSeconds = testFast ? 1.1 : 180;
+  resizeHandler = () => this.resize(); visibilityHandler = () => { this.last = 0; if (document.hidden && this.phase === 'playing') { this.phase = 'paused'; this.persist(); this.onUpdate(); } };
+  keyDownHandler = (event: KeyboardEvent) => { const k = event.key.toLowerCase(); if ([...playerKeys.flat(), 'escape'].includes(k)) event.preventDefault(); if (k === 'escape') this.togglePause(); else { this.keys.add(k); this.start(); } }; keyUpHandler = (event: KeyboardEvent) => this.keys.delete(event.key.toLowerCase());
+  constructor(canvas: HTMLCanvasElement, update: () => void, seed: string, saved?: Snapshot) { this.canvas = canvas; this.ctx = canvas.getContext('2d')!; this.onUpdate = update; this.seed = seed; if (saved) this.restore(saved); else this.reset(seed); this.resize(); addEventListener('resize', this.resizeHandler); document.addEventListener('visibilitychange', this.visibilityHandler); addEventListener('keydown', this.keyDownHandler); addEventListener('keyup', this.keyUpHandler); this.raf = requestAnimationFrame(t => this.frame(t)); }
+  reset(seed = makeSeed()) { this.seed = seed; this.phase = 'ready'; this.habitat = 0; this.rescued = 0; this.elapsed = 0; this.strikes = 0; this.lanterns = [90, 230, 370, 510]; this.setHabitat(); this.persist(); }
+  setHabitat() { const random = rng(`${this.seed}:${this.habitat}`); const hues = ['#d8aa58', '#82b7b9', '#db7250', '#f4efd9']; const traits = ['bold', 'bouncy', 'sleepy', 'curious']; this.creatures = Array.from({ length: 4 }, (_, i) => ({ x: 80 + random() * 340, y: 70 + random() * 210, hue: hues[i], trait: traits[(i + Math.floor(random() * 4)) % 4], progress: 0, wobble: random() * 6 })); this.hazards = Array.from({ length: 3 }, (_, i) => ({ x: 190 + random() * 270, y: 64 + random() * 220, r: 20 + Math.floor(random() * 12), drift: (random() > .5 ? 1 : -1) * (12 + i * 4) })); }
+  restore(s: Snapshot) { Object.assign(this, s); this.setHabitat(); this.creatures = s.creatures; this.phase = s.phase === 'playing' ? 'paused' : s.phase; }
+  snapshot(): Snapshot { return { phase: this.phase, habitat: this.habitat, rescued: this.rescued, elapsed: this.elapsed, strikes: this.strikes, lanterns: this.lanterns, creatures: this.creatures, seed: this.seed }; }
+  persist() { localStorage.setItem(key('run'), JSON.stringify(this.snapshot())); }
   destroy() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.resizeHandler); document.removeEventListener('visibilitychange', this.visibilityHandler); removeEventListener('keydown', this.keyDownHandler); removeEventListener('keyup', this.keyUpHandler); }
-  start() { if (this.phase === 'ready') { this.phase = 'playing'; this.onUpdate(); } }
-  togglePause() { if (this.phase === 'playing') { this.phase = 'paused'; this.onUpdate(); } else if (this.phase === 'paused') { this.phase = 'playing'; this.onUpdate(); } }
-  move(player: number, dir: number) { this.start(); this.lanterns[player] = Math.max(66, Math.min(548, this.lanterns[player] + dir * 22)); }
-  helpHerd() { this.start(); this.creatures.forEach(c => c.x += this.assist ? 115 : 78); }
-  step() {
-    if (this.phase !== 'playing') return;
-    const speed = this.assist ? 118 : 160;
-    if (this.keys.has('a')) this.lanterns[0] = Math.max(66, this.lanterns[0] - speed / 60);
-    if (this.keys.has('d')) this.lanterns[0] = Math.min(548, this.lanterns[0] + speed / 60);
-    if (this.keys.has('j')) this.lanterns[1] = Math.max(66, this.lanterns[1] - speed / 60);
-    if (this.keys.has('l')) this.lanterns[1] = Math.min(548, this.lanterns[1] + speed / 60);
-    for (const c of [...this.creatures]) {
-      c.wobble += 0.035;
-      const nearest = this.lanterns.reduce((best, x) => Math.abs(x - c.x) < Math.abs(best - c.x) ? x : best, this.lanterns[0]);
-      const attraction = Math.abs(nearest - c.x) < (this.assist ? 140 : 112) ? (nearest > c.x ? 1 : -1) * 4.3 : 0;
-      c.x += attraction + Math.sin(c.wobble) * .28;
-      c.y += Math.cos(c.wobble * .7) * .35;
-      c.y = Math.max(58, Math.min(310, c.y));
-      if (c.x > 535) { this.creatures.splice(this.creatures.indexOf(c), 1); this.rescued++; this.onUpdate(); }
-    }
-    if (!this.creatures.length) { if (this.habitat === 2) { this.phase = 'postcard'; this.onUpdate(); } else { this.habitat++; this.makeCreatures(); this.lanterns = [145, 415]; this.onUpdate(); } }
-  }
+  start() { if (this.phase === 'ready' || this.phase === 'paused') { this.phase = 'playing'; this.onUpdate(); } } togglePause() { if (this.phase === 'playing') this.phase = 'paused'; else if (this.phase === 'paused') this.phase = 'playing'; this.persist(); this.onUpdate(); } move(player: number, direction: number) { this.start(); this.lanterns[player] = Math.max(42, Math.min(558, this.lanterns[player] + direction * 28)); this.persist(); }
+  step() { if (this.phase !== 'playing') return; const dt = 1 / 60; this.elapsed += dt; const speed = this.assist ? 118 : 175; playerKeys.forEach(([left, right], player) => { if (this.keys.has(left)) this.lanterns[player] = Math.max(42, this.lanterns[player] - speed * dt); if (this.keys.has(right)) this.lanterns[player] = Math.min(558, this.lanterns[player] + speed * dt); }); for (const hazard of this.hazards) { hazard.y += hazard.drift * dt; if (hazard.y < 48 || hazard.y > 306) hazard.drift *= -1; } for (const creature of this.creatures) { creature.wobble += .04; const nearest = this.lanterns.reduce((best, value) => Math.abs(value - creature.x) < Math.abs(best - creature.x) ? value : best, this.lanterns[0]); const near = Math.abs(nearest - creature.x) < (this.assist ? 145 : 105); const hazard = this.hazards.some(h => Math.hypot(h.x - creature.x, h.y - creature.y) < h.r + 17); if (near && !hazard) { creature.progress = Math.min(100, creature.progress + (testFast ? 120 : this.assist ? 1.45 : .95) * dt); creature.x += (nearest - creature.x) * .014; } else { creature.progress = Math.max(0, creature.progress - .24 * dt); creature.x += Math.sin(creature.wobble) * .5; } creature.y = Math.max(48, Math.min(306, creature.y + Math.cos(creature.wobble * .61) * .35)); } if (this.hazards.some(h => this.lanterns.some(x => Math.hypot(x - h.x, 180 - h.y) < h.r + 16))) this.strikes += dt * (this.assist ? .18 : .34); if (this.strikes >= 3) { this.phase = 'lost'; this.persist(); this.onUpdate(); return; } const ready = testFast ? 2 : this.creatures.filter(c => c.progress >= 100).length; if (this.elapsed >= (this.habitat + 1) * this.habitatSeconds && ready >= 2) { this.rescued += ready; if (this.habitat === 2) this.phase = 'postcard'; else { this.habitat++; this.setHabitat(); this.lanterns = [90, 230, 370, 510]; } this.persist(); this.onUpdate(); } if (this.elapsed - this.saveAt > 1) { this.saveAt = this.elapsed; this.persist(); this.onUpdate(); } }
   frame(now: number) { const delta = Math.min(.1, (now - this.last) / 1000 || 0); this.last = now; this.accumulator += delta; while (this.accumulator >= 1 / 60) { this.step(); this.accumulator -= 1 / 60; } this.draw(); this.raf = requestAnimationFrame(t => this.frame(t)); }
-  resize() { const rect = this.canvas.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio, 2); this.canvas.width = rect.width * dpr; this.canvas.height = rect.width * .59 * dpr; this.ctx.setTransform(dpr * rect.width / 600, 0, 0, dpr * rect.width / 600, 0, 0); }
-  draw() { const c = this.ctx; c.clearRect(0,0,600,354); c.fillStyle = '#202723'; c.fillRect(0,0,600,354); c.fillStyle = '#35403a'; for(let x=0;x<600;x+=100){ c.fillRect(x+4, 10+(x%3)*10, 88, 80); c.fillRect(x+4, 235, 88, 106); } c.strokeStyle = '#6f963e'; c.lineWidth=7; c.setLineDash([18,14]); c.beginPath(); c.moveTo(20,180); c.lineTo(580,180); c.stroke(); c.setLineDash([]); c.fillStyle='#b9d76c'; c.fillRect(550,40,26,270); c.fillStyle='#202723'; c.font='bold 14px Arial'; c.fillText('SHELTER', 522, 28);
-    this.lanterns.forEach((x,i)=>{ c.fillStyle=i?'#db7250':'#b9d76c'; c.beginPath(); c.arc(x,180,20,0,Math.PI*2); c.fill(); c.strokeStyle='#f4efd9'; c.lineWidth=3; c.stroke(); c.fillStyle='#202723'; c.fillText(i?'2':'1',x-4,185); });
-    this.creatures.forEach(creature=>{ c.save(); c.translate(creature.x,creature.y); const bob=Math.sin(creature.wobble)*3; c.fillStyle=creature.hue; c.beginPath(); c.ellipse(0,bob,19,24,0,0,Math.PI*2); c.fill(); c.strokeStyle='#111612'; c.lineWidth=3; c.stroke(); c.fillStyle='#111612'; c.beginPath(); c.arc(-6,bob-3,3,0,7); c.arc(6,bob-3,3,0,7); c.fill(); c.restore(); });
-    c.fillStyle='#f4efd9'; c.font='bold 15px Arial'; c.fillText(`${habitats[this.habitat].weather} · ${this.rescued}/12 rescued`, 20, 332);
-    if(this.phase==='ready'||this.phase==='paused'){ c.fillStyle='rgba(17,22,18,.84)'; c.fillRect(155,118,290,112); c.fillStyle='#f4efd9'; c.textAlign='center'; c.font='bold 22px Arial'; c.fillText(this.phase==='paused'?'Paused':'Press a movement key',300,160); c.font='16px Arial'; c.fillText(this.phase==='paused'?'Escape resumes':'or tap a touch pad to begin',300,190); c.textAlign='start'; }
-  }
+  resize() { const rect = this.canvas.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio, 2); this.canvas.width = Math.max(1, Math.round(rect.width * dpr)); this.canvas.height = Math.max(1, Math.round(rect.width * .59 * dpr)); this.ctx.setTransform(dpr * rect.width / 600, 0, 0, dpr * rect.width / 600, 0, 0); }
+  draw() { const c = this.ctx; c.clearRect(0, 0, 600, 354); c.fillStyle = '#202723'; c.fillRect(0, 0, 600, 354); c.fillStyle = '#35403a'; for (let x = 0; x < 600; x += 100) { c.fillRect(x + 4, 10 + (x % 3) * 10, 88, 80); c.fillRect(x + 4, 235, 88, 106); } c.strokeStyle = '#6f963e'; c.lineWidth = 7; c.setLineDash([18, 14]); c.beginPath(); c.moveTo(20, 180); c.lineTo(580, 180); c.stroke(); c.setLineDash([]); c.fillStyle = '#b9d76c'; c.fillRect(550, 40, 26, 270); this.hazards.forEach(h => { c.fillStyle = '#db7250'; c.beginPath(); c.arc(h.x, h.y, h.r, 0, Math.PI * 2); c.fill(); c.fillStyle = '#202723'; c.fillRect(h.x - 2, h.y - h.r + 5, 4, h.r * 2 - 10); }); this.lanterns.forEach((x, i) => { c.fillStyle = playerColors[i]; c.beginPath(); c.arc(x, 180, 18, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#111612'; c.lineWidth = 3; c.stroke(); c.fillStyle = '#111612'; c.font = 'bold 14px Arial'; c.fillText(String(i + 1), x - 4, 185); }); this.creatures.forEach(creature => { const bob = Math.sin(creature.wobble) * 3; c.save(); c.translate(creature.x, creature.y); c.fillStyle = creature.hue; c.beginPath(); c.ellipse(0, bob, 18, 23, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#111612'; c.lineWidth = 3; c.stroke(); c.fillStyle = '#111612'; c.beginPath(); c.arc(-6, bob - 3, 3, 0, 7); c.arc(6, bob - 3, 3, 0, 7); c.fill(); c.fillStyle = '#f4efd9'; c.fillRect(-18, bob + 31, 36 * creature.progress / 100, 4); c.restore(); }); c.fillStyle = '#f4efd9'; c.font = 'bold 15px Arial'; c.fillText(`${weather[hash(this.seed + this.habitat) % weather.length]} · ${Math.ceil(Math.max(0, this.habitatSeconds * (this.habitat + 1) - this.elapsed))}s to shelter window · ${Math.max(0, 3 - Math.ceil(this.strikes))} lamps safe`, 18, 332); if (this.phase !== 'playing') { c.fillStyle = 'rgba(17,22,18,.86)'; c.fillRect(110, 110, 380, 126); c.fillStyle = '#f4efd9'; c.textAlign = 'center'; c.font = 'bold 23px Arial'; const title = this.phase === 'lost' ? 'The storm scattered the group' : this.phase === 'postcard' ? 'All shelters are warm' : this.phase === 'paused' ? 'Paused' : 'Press a player key to begin'; c.fillText(title, 300, 156); c.font = '16px Arial'; c.fillText(this.phase === 'lost' ? 'Try the same seed again' : this.phase === 'postcard' ? 'Open your postcard below' : 'Keep creatures away from clay storms', 300, 190); c.textAlign = 'start'; } }
 }
-
-function demo() {
-  shell(`<section class="game-page"><div class="game-top"><div><p class="eyebrow">Seed: moss-postcard</p><h1>Guide creatures home together</h1><p id="status" aria-live="polite">Habitat 1 of 3: Drainway. Four creatures need shelter.</p></div><button class="button quiet" id="pause">Pause</button></div>
-  <div class="canvas-wrap"><canvas id="game" aria-label="Couch Creatures rescue board. Move player one with A and D. Move player two with J and L." role="img"></canvas></div>
-  <section class="touch-controls" aria-label="Touch controls"><div><strong>Player one</strong><button class="touch moss" data-player="0" data-dir="-1" aria-label="Move player one left">◀</button><button class="touch moss" data-player="0" data-dir="1" aria-label="Move player one right">▶</button></div><div><strong>Player two</strong><button class="touch clay" data-player="1" data-dir="-1" aria-label="Move player two left">◀</button><button class="touch clay" data-player="1" data-dir="1" aria-label="Move player two right">▶</button></div></section>
-  <section class="game-tools" aria-labelledby="settings-title"><h2 id="settings-title">Play settings</h2><label><input id="assist" type="checkbox"> Assist mode slows the creatures</label><label><input id="mute" type="checkbox"> Mute sound</label><button class="button quiet" id="help-herd">Help herd creatures</button><p>Press Escape to pause. Refreshing keeps these settings.</p></section>
-  <section class="postcard" id="postcard" hidden aria-labelledby="postcard-title"><img src="/moss-rescue.webp" width="1200" height="800" alt="Three rescued creatures stand at their mossy shelter."><div><p class="eyebrow">Group postcard</p><h2 id="postcard-title">All 12 creatures are home</h2><p>You guided through Drainway, Moss Court, and Window Garden.</p><button class="button primary" id="again">Play again</button></div></section></section>`, 'Demo — Couch Creatures', 'Play a sample three-habitat Couch Creatures rescue game.');
-  const game = new Game(document.querySelector('#game')!, update); activeGame = game;
-  const status = document.querySelector('#status')!; const postcard = document.querySelector<HTMLDivElement>('#postcard')!;
-  function update() { const h = habitats[game.habitat]; status.textContent = game.phase === 'postcard' ? 'The rescue is complete.' : `Habitat ${game.habitat + 1} of 3: ${h.name}. ${game.creatures.length} creatures still need shelter.`; (document.querySelector('#pause') as HTMLButtonElement).textContent = game.phase === 'paused' ? 'Resume' : 'Pause'; postcard.hidden = game.phase !== 'postcard'; }
-  document.querySelector('#pause')?.addEventListener('click', () => game.togglePause());
-  document.querySelector('#help-herd')?.addEventListener('click', () => game.helpHerd());
-  document.querySelectorAll<HTMLButtonElement>('[data-player]').forEach(b => { const act=()=>game.move(Number(b.dataset.player), Number(b.dataset.dir)); b.addEventListener('pointerdown', act); b.addEventListener('click', act); });
-  const assist = document.querySelector<HTMLInputElement>('#assist')!; assist.checked=game.assist; assist.addEventListener('change',()=>{game.assist=assist.checked;saveSetting('assist',game.assist);});
-  const mute = document.querySelector<HTMLInputElement>('#mute')!; mute.checked=game.mute; mute.addEventListener('change',()=>{game.mute=mute.checked;saveSetting('mute',game.mute);});
-  document.querySelector('#again')?.addEventListener('click',()=>{game.reset(); update();});
-  update();
-}
-
+function savedRun(): Snapshot | undefined { try { const value = localStorage.getItem(key('run')); return value ? JSON.parse(value) as Snapshot : undefined; } catch { return undefined; } }
+function controls() { return `<section class="touch-controls" aria-label="Touch controls">${['one', 'two', 'three', 'four'].map((name, i) => `<div class="player-control p${i + 1}"><strong>Player ${name}</strong><span>${playerKeys[i][0].replace('arrowleft', '←')} / ${playerKeys[i][1].replace('arrowright', '→')}</span><button class="touch" data-player="${i}" data-dir="-1" aria-label="Move player ${name} left">◀</button><button class="touch" data-player="${i}" data-dir="1" aria-label="Move player ${name} right">▶</button></div>`).join('')}</section>`; }
+function gamePage() { const sampleSeed = 'moss-postcard-17'; const saved = savedRun(); const seed = saved?.seed || (demoMode() ? sampleSeed : makeSeed()); shell(`<section class="game-page"><div class="game-top"><div><p class="eyebrow">Seed: ${seed}</p><h1>Guide creatures home together</h1><p id="status" aria-live="polite"></p></div><button class="button quiet" id="pause">Pause</button></div><div class="canvas-wrap"><canvas id="game" role="img" aria-label="Creature rescue board. Players one to four move lanterns with A and D, J and L, F and H, or left and right arrows."></canvas></div>${controls()}<section class="game-tools" aria-labelledby="settings-title"><h2 id="settings-title">Play settings</h2><label><input id="assist" type="checkbox"> Assist mode widens lantern light and slows storm strikes</label><p>Each habitat has a three-minute shelter window. Keep two creatures in light and avoid clay storms. Escape pauses. Refreshing restores this run.</p></section><section class="result" id="lost" hidden aria-labelledby="lost-title"><h2 id="lost-title">The group needs another try</h2><p>Three lanterns hit clay storms. Restarting keeps this route seed.</p><button class="button primary" id="retry">Try this route again</button></section><section class="postcard" id="postcard" hidden aria-labelledby="postcard-title"><img src="/moss-rescue.webp" width="1200" height="800" alt="Three rescued creatures stand at their mossy shelter."><div><p class="eyebrow">Group postcard</p><h2 id="postcard-title">All creatures are home</h2><p id="postcard-copy"></p><button class="button primary" id="again">Play a new route</button></div></section></section>`, demoMode() ? 'Demo — Couch Creatures' : 'Play — Couch Creatures', 'Play a shared rescue with hazards, creature traits, and four player controls.'); const status = document.querySelector('#status')!; const lost = document.querySelector<HTMLDivElement>('#lost')!; const postcard = document.querySelector<HTMLDivElement>('#postcard')!; const game = new Game(document.querySelector('#game')!, update, seed, saved); activeGame = game; function update() { const time = Math.ceil(Math.max(0, game.habitatSeconds * (game.habitat + 1) - game.elapsed)); status.textContent = game.phase === 'postcard' ? 'The rescue is complete.' : game.phase === 'lost' ? 'The route ended in a storm.' : `Habitat ${game.habitat + 1} of 3: ${habitats[game.habitat]}. ${game.creatures.filter(c => c.progress >= 100).length} creatures ready. ${time} seconds remain.`; (document.querySelector('#pause') as HTMLButtonElement).textContent = game.phase === 'paused' ? 'Resume' : 'Pause'; lost.hidden = game.phase !== 'lost'; postcard.hidden = game.phase !== 'postcard'; document.querySelector('#postcard-copy')!.textContent = `You protected ${game.rescued} creatures through three seeded habitats.`; } document.querySelector('#pause')?.addEventListener('click', () => game.togglePause()); document.querySelector('#retry')?.addEventListener('click', () => { game.reset(game.seed); update(); }); document.querySelector('#again')?.addEventListener('click', () => { game.reset(makeSeed()); update(); }); document.querySelectorAll<HTMLButtonElement>('[data-player]').forEach(button => button.addEventListener('click', () => game.move(Number(button.dataset.player), Number(button.dataset.dir)))); const assist = document.querySelector<HTMLInputElement>('#assist')!; assist.checked = game.assist; assist.addEventListener('change', () => { game.assist = assist.checked; setBool('assist', game.assist); game.persist(); }); update(); }
+function landing() { shell(`<section class="game-layout" aria-labelledby="page-title"><div class="intro-panel"><p class="eyebrow">Shared creature rescue</p><h1 id="page-title">Guide creatures home together</h1><p class="lead">For families sharing one screen, guide shy creatures past storms into shelter.</p><div class="actions">${link('/demo', 'Try it with sample data', 'button primary')}<span>Starts a seeded three-habitat rescue.</span></div><ul class="facts"><li>2–4 local players</li><li>No account or child data</li><li>Runs save on this device</li></ul><div class="control-note"><strong>Players 1–4</strong> A/D · J/L · F/H · ←/→<br><span>Keep creatures in lantern light. Avoid moving clay storms.</span></div></div><figure class="route-art"><img src="/moss-rescue.webp" width="1200" height="800" decoding="async" alt="Small creatures cross a concrete courtyard toward a mossy shelter."><figcaption>Each route has seeded weather, creature traits, and moving hazards.</figcaption></figure></section><section class="live-preview" aria-labelledby="preview-title"><div><p class="eyebrow">One full rescue</p><h2 id="preview-title">Plan for nine minutes</h2><p>Three three-minute shelter windows make a complete run. Three storm strikes end it early.</p></div>${link('/demo', 'Start the sample rescue', 'button primary')}</section><section class="steps" aria-labelledby="how-title"><h2 id="how-title">How shared play works</h2><ol><li><strong>Choose lanterns.</strong><span>Up to four people use their own keys or touch pads.</span></li><li><strong>Protect creatures.</strong><span>Keep two creatures in lantern light while storms cross the route.</span></li><li><strong>Finish the postcard.</strong><span>Complete all three shelter windows to bring everyone home.</span></li></ol></section><section class="privacy-strip" aria-labelledby="not-title"><h2 id="not-title">What this game does not do</h2><p>It has no chat, ads, accounts, tracking, or matchmaking. Runs and optional assist mode stay in this browser.</p></section>`, 'Couch Creatures — Shared creature rescue', 'A nine-minute shared rescue game for two to four local players.'); }
+function legalPage(kind: 'privacy' | 'terms') { const privacy = kind === 'privacy'; shell(`<section class="legal"><p class="eyebrow">Couch Creatures</p><h1>${privacy ? 'Privacy for shared play' : 'Terms for Couch Creatures'}</h1>${privacy ? '<p>Couch Creatures does not ask for names, accounts, photos, contacts, or location.</p><h2>What stays on this device</h2><p>Run recovery and assist mode stay in this browser. They are not sent anywhere.</p><h2>Demo mode</h2><p>The demo uses a separate local storage namespace. Reset demo clears it.</p>' : '<p>Couch Creatures is free to play and has no purchases.</p><h2>Safe play</h2><p>Choose what is suitable for your household. Do not play while walking or driving.</p><h2>Changes</h2><p>We may update the game or these terms.</p>'}</section>`, `${privacy ? 'Privacy' : 'Terms'} — Couch Creatures`, privacy ? 'How Couch Creatures stores shared-play settings on your device.' : 'Terms for the Couch Creatures shared-screen game.'); }
+function controller() { shell(`<section class="legal"><p class="eyebrow">Phone controls</p><h1>Use the four local touch pads</h1><p>This static edition keeps every controller on the shared game screen. It does not create rooms or send player data to a server.</p><p>Open the demo and use the labelled 44-pixel touch pads for players one through four.</p>${link('/demo', 'Open the rescue controls', 'button primary')}</section>`, 'Phone controls — Couch Creatures', 'Couch Creatures uses local touch controls and does not send player data to a server.'); }
 function notFound() { shell(`<section class="legal"><p class="eyebrow">Route missing</p><h1>This route has no creatures</h1><p>Go back to the rescue board.</p>${link('/', 'Open Couch Creatures', 'button primary')}</section>`, 'Page not found — Couch Creatures', 'The requested Couch Creatures page was not found.'); }
-function render() { activeGame?.destroy(); activeGame = null; const r=route(); if(r==='/privacy') legalPage('privacy'); else if(r==='/terms') legalPage('terms'); else if(r==='/demo') demo(); else if(r==='/') landing(); else notFound(); }
-addEventListener('popstate', render); render();
+function render(focus = false) { activeGame?.destroy(); activeGame = null; const current = route(); if (current === '/') landing(); else if (current === '/demo') gamePage(); else if (current === '/privacy' || current === '/terms') legalPage(current.slice(1) as 'privacy' | 'terms'); else if (current === '/controller') controller(); else notFound(); if (focus) focusRoute(); }
+addEventListener('popstate', () => render(true)); render();
