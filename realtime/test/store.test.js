@@ -8,8 +8,8 @@ import {
   createStore,
 } from "../src/store.js";
 
-test("room creation enforces eight per minute and reports the remaining wait", () => {
-  const store = createStore();
+test("room creation enforces eight per minute and reports the remaining wait", async () => {
+  const store = await createStore();
   const now = 1_000_000;
   const rooms = Array.from({ length: CREATE_LIMIT }, () =>
     store.createRoom("family-a", now),
@@ -27,8 +27,8 @@ test("room creation enforces eight per minute and reports the remaining wait", (
   store.close();
 });
 
-test("room expiry is enforced at the advertised 20-minute boundary", () => {
-  const store = createStore();
+test("room expiry is enforced at the advertised 20-minute boundary", async () => {
+  const store = await createStore();
   const now = 2_000_000;
   const room = store.createRoom("family-b", now);
   assert.ok(store.getRoom(room.code, now + ROOM_TTL_MS - 1));
@@ -37,8 +37,8 @@ test("room expiry is enforced at the advertised 20-minute boundary", () => {
   store.close();
 });
 
-test("the move cursor advances after the retained buffer fills", () => {
-  const store = createStore();
+test("the move cursor advances after the retained buffer fills", async () => {
+  const store = await createStore();
   const now = 3_000_000;
   const room = store.createRoom("family-c", now);
   for (let index = 0; index < MOVE_BUFFER; index++)

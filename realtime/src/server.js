@@ -9,7 +9,7 @@ const databasePath =
   (process.env.NODE_ENV === "test" ? ":memory:" : "/data/rooms.sqlite");
 if (databasePath !== ":memory:")
   mkdirSync(dirname(databasePath), { recursive: true });
-const store = createStore(databasePath);
+const store = await createStore(databasePath);
 const port = Number(process.env.PORT || 8787);
 store.cleanup();
 const cleanupTimer = setInterval(() => store.cleanup(), 60_000);

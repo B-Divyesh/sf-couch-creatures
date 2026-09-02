@@ -4,7 +4,7 @@ ARG SOURCE_COMMIT=dev
 ENV NODE_ENV=production \
     BUILD_SHA=$SOURCE_COMMIT \
     PORT=8787 \
-    DATABASE_PATH=/data/rooms-v2.sqlite
+    DATABASE_PATH=/data/rooms-v3.sqlite
 
 WORKDIR /app
 COPY realtime/package.json realtime/package-lock.json ./

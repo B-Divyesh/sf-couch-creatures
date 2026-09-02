@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
-import { DatabaseSync } from "node:sqlite";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import initSqlJs from "sql.js";
 
 export const ROOM_TTL_MS = 20 * 60 * 1000;
 export const CREATE_LIMIT = 8;
@@ -15,91 +16,88 @@ function roomCode() {
   ).join("");
 }
 
-export function createStore(path = ":memory:") {
-  const db = new DatabaseSync(path);
-  const retryLocked = (work) => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return work();
-      } catch (error) {
-        if (error?.errcode !== 5 || attempt >= 9) throw error;
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
-      }
-    }
-  };
-  db.exec("PRAGMA busy_timeout = 5000");
-  retryLocked(() => db.exec("PRAGMA journal_mode = DELETE"));
-  db.exec("PRAGMA foreign_keys = ON");
-
-  const schema = `
+export async function createStore(path = ":memory:") {
+  const SQL = await initSqlJs();
+  const saved =
+    path !== ":memory:" && existsSync(path) && readFileSync(path).byteLength > 0
+      ? readFileSync(path)
+      : undefined;
+  const db = saved ? new SQL.Database(saved) : new SQL.Database();
+  db.run("PRAGMA foreign_keys = ON");
+  db.run(`
     CREATE TABLE IF NOT EXISTS rooms (
       code TEXT PRIMARY KEY,
       expires_at INTEGER NOT NULL,
       last_cursor INTEGER NOT NULL DEFAULT 0
-    ) STRICT;
+    );
     CREATE TABLE IF NOT EXISTS moves (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room_code TEXT NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
       player INTEGER NOT NULL,
       direction INTEGER NOT NULL,
       created_at INTEGER NOT NULL
-    ) STRICT;
+    );
     CREATE INDEX IF NOT EXISTS moves_room_cursor ON moves(room_code, id);
     CREATE TABLE IF NOT EXISTS create_limits (
       client_key TEXT PRIMARY KEY,
       window_started_at INTEGER NOT NULL,
       count INTEGER NOT NULL
-    ) STRICT;
-  `;
-  retryLocked(() => db.exec(schema));
+    );
+  `);
 
-  const statements = {
-    cleanRooms: db.prepare("DELETE FROM rooms WHERE expires_at <= ?"),
-    cleanLimits: db.prepare(
-      "DELETE FROM create_limits WHERE window_started_at + ? <= ?",
-    ),
-    getLimit: db.prepare(
-      "SELECT window_started_at, count FROM create_limits WHERE client_key = ?",
-    ),
-    saveLimit: db.prepare(`
-      INSERT INTO create_limits(client_key, window_started_at, count) VALUES (?, ?, ?)
-      ON CONFLICT(client_key) DO UPDATE SET window_started_at = excluded.window_started_at, count = excluded.count
-    `),
-    insertRoom: db.prepare("INSERT INTO rooms(code, expires_at) VALUES (?, ?)"),
-    getRoom: db.prepare(
-      "SELECT code, expires_at, last_cursor FROM rooms WHERE code = ? AND expires_at > ?",
-    ),
-    deleteRoom: db.prepare("DELETE FROM rooms WHERE code = ?"),
-    insertMove: db.prepare(
-      "INSERT INTO moves(room_code, player, direction, created_at) VALUES (?, ?, ?, ?)",
-    ),
-    updateCursor: db.prepare("UPDATE rooms SET last_cursor = ? WHERE code = ?"),
-    trimCutoff: db.prepare(
-      "SELECT id FROM moves WHERE room_code = ? ORDER BY id DESC LIMIT 1 OFFSET ?",
-    ),
-    trimMoves: db.prepare("DELETE FROM moves WHERE room_code = ? AND id < ?"),
-    readMoves: db.prepare(
-      "SELECT id, player, direction FROM moves WHERE room_code = ? AND id > ? ORDER BY id ASC",
-    ),
+  const one = (sql, parameters = []) => {
+    const statement = db.prepare(sql);
+    try {
+      statement.bind(parameters);
+      return statement.step() ? statement.getAsObject() : undefined;
+    } finally {
+      statement.free();
+    }
   };
-
-  function transaction(work) {
-    db.exec("BEGIN IMMEDIATE");
+  const all = (sql, parameters = []) => {
+    const statement = db.prepare(sql);
+    const rows = [];
+    try {
+      statement.bind(parameters);
+      while (statement.step()) rows.push(statement.getAsObject());
+      return rows;
+    } finally {
+      statement.free();
+    }
+  };
+  const persist = () => {
+    if (path === ":memory:") return;
+    const next = `${path}.next`;
+    writeFileSync(next, db.export());
+    renameSync(next, path);
+  };
+  const transaction = (work) => {
+    db.run("BEGIN IMMEDIATE");
     try {
       const result = work();
-      db.exec("COMMIT");
+      db.run("COMMIT");
+      persist();
       return result;
     } catch (error) {
-      db.exec("ROLLBACK");
+      db.run("ROLLBACK");
       throw error;
     }
-  }
+  };
+  const deleteExpired = (now) => {
+    db.run("DELETE FROM rooms WHERE expires_at <= ?", [now]);
+    db.run("DELETE FROM create_limits WHERE window_started_at + ? <= ?", [
+      CREATE_WINDOW_MS,
+      now,
+    ]);
+  };
 
   function createRoom(clientKey, now = Date.now()) {
     return transaction(() => {
-      statements.cleanRooms.run(now);
-      statements.cleanLimits.run(CREATE_WINDOW_MS, now);
-      const current = statements.getLimit.get(clientKey);
+      deleteExpired(now);
+      const current = one(
+        "SELECT window_started_at, count FROM create_limits WHERE client_key = ?",
+        [clientKey],
+      );
       const active =
         current && current.window_started_at + CREATE_WINDOW_MS > now;
       const windowStartedAt = active ? current.window_started_at : now;
@@ -113,40 +111,52 @@ export function createStore(path = ":memory:") {
           ),
         };
       }
-      statements.saveLimit.run(clientKey, windowStartedAt, count + 1);
+      db.run(
+        `INSERT INTO create_limits(client_key, window_started_at, count) VALUES (?, ?, ?)
+         ON CONFLICT(client_key) DO UPDATE SET window_started_at = excluded.window_started_at, count = excluded.count`,
+        [clientKey, windowStartedAt, count + 1],
+      );
       const expiresAt = now + ROOM_TTL_MS;
       let code = roomCode();
-      while (statements.getRoom.get(code, now)) code = roomCode();
-      statements.insertRoom.run(code, expiresAt);
+      while (one("SELECT code FROM rooms WHERE code = ?", [code]))
+        code = roomCode();
+      db.run("INSERT INTO rooms(code, expires_at) VALUES (?, ?)", [
+        code,
+        expiresAt,
+      ]);
       return { limited: false, code, expiresAt };
     });
   }
 
-  function cleanup(now = Date.now()) {
-    return transaction(() => {
-      statements.cleanRooms.run(now);
-      statements.cleanLimits.run(CREATE_WINDOW_MS, now);
-    });
-  }
-
   function getRoom(code, now = Date.now()) {
-    const room = statements.getRoom.get(code, now);
-    if (!room) statements.deleteRoom.run(code);
-    return room;
+    return one(
+      "SELECT code, expires_at, last_cursor FROM rooms WHERE code = ? AND expires_at > ?",
+      [code, now],
+    );
   }
 
   function addMove(code, player, direction, now = Date.now()) {
     return transaction(() => {
-      const room = statements.getRoom.get(code, now);
+      const room = getRoom(code, now);
       if (!room) {
-        statements.deleteRoom.run(code);
+        db.run("DELETE FROM rooms WHERE code = ?", [code]);
         return undefined;
       }
-      const inserted = statements.insertMove.run(code, player, direction, now);
-      const cursor = Number(inserted.lastInsertRowid);
-      statements.updateCursor.run(cursor, code);
-      const cutoff = statements.trimCutoff.get(code, MOVE_BUFFER - 1);
-      if (cutoff) statements.trimMoves.run(code, cutoff.id);
+      db.run(
+        "INSERT INTO moves(room_code, player, direction, created_at) VALUES (?, ?, ?, ?)",
+        [code, player, direction, now],
+      );
+      const cursor = Number(one("SELECT last_insert_rowid() AS id").id);
+      db.run("UPDATE rooms SET last_cursor = ? WHERE code = ?", [cursor, code]);
+      const cutoff = one(
+        "SELECT id FROM moves WHERE room_code = ? ORDER BY id DESC LIMIT 1 OFFSET ?",
+        [code, MOVE_BUFFER - 1],
+      );
+      if (cutoff)
+        db.run("DELETE FROM moves WHERE room_code = ? AND id < ?", [
+          code,
+          cutoff.id,
+        ]);
       return cursor;
     });
   }
@@ -156,20 +166,31 @@ export function createStore(path = ":memory:") {
     if (!room) return undefined;
     return {
       cursor: Number(room.last_cursor),
-      moves: statements.readMoves.all(code, after).map((move) => ({
+      moves: all(
+        "SELECT id, player, direction FROM moves WHERE room_code = ? AND id > ? ORDER BY id ASC",
+        [code, after],
+      ).map((move) => ({
         cursor: Number(move.id),
-        player: move.player,
-        direction: move.direction,
+        player: Number(move.player),
+        direction: Number(move.direction),
       })),
     };
   }
 
+  function cleanup(now = Date.now()) {
+    return transaction(() => deleteExpired(now));
+  }
+
+  persist();
   return {
     createRoom,
     getRoom,
     addMove,
     movesAfter,
     cleanup,
-    close: () => db.close(),
+    close: () => {
+      persist();
+      db.close();
+    },
   };
 }
