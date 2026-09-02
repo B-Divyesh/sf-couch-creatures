@@ -1,1 +1,103 @@
-[hidden]{display:none!important}.site-header a,footer a{min-width:44px}.wordmark{min-height:44px;display:inline-flex;align-items:center}.room-panel,.controller-page{margin-top:28px;border-top:2px solid var(--line);padding-top:22px}.room-panel{display:flex;justify-content:space-between;gap:24px;align-items:center}.room-panel h2,.controller-page h2{font-size:26px}.room-panel p{max-width:50ch}.room-panel #qr-box{background:var(--chalk);color:var(--soot);padding:10px;text-align:center}.room-panel #qr-box img{display:block}.how-to-play{margin-top:36px;border-top:2px solid var(--line);padding-top:20px}.how-to-play ol{padding-left:24px}.controller-page{max-width:720px;margin:0 auto;padding:54px clamp(16px,4vw,64px)}.controller-page h1{max-width:14ch}.join-room{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:28px 0}.join-room label{grid-column:1/-1;font-weight:700}.join-room input{height:48px;background:var(--slab);border:3px solid var(--chalk);color:var(--chalk);padding:8px;font:inherit;letter-spacing:.14em;text-transform:uppercase}.phone-players,.phone-move{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.phone-players button,.phone-move button{min-height:68px}.phone-players [aria-pressed="true"]{background:var(--lichen);color:var(--soot)}@media (max-width:760px){.room-panel{align-items:flex-start;flex-direction:column}.join-room{grid-template-columns:1fr}.join-room button{width:100%}}
+[hidden] {
+  display: none !important;
+}
+.site-header a,
+footer a {
+  min-width: 44px;
+}
+.wordmark {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.room-panel,
+.controller-page {
+  margin-top: 28px;
+  border-top: 2px solid var(--line);
+  padding-top: 22px;
+}
+.room-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+.room-panel h2,
+.controller-page h2 {
+  font-size: 26px;
+}
+.room-panel p {
+  max-width: 50ch;
+}
+.room-panel #qr-box {
+  background: var(--chalk);
+  color: var(--soot);
+  padding: 10px;
+  text-align: center;
+}
+.room-panel #qr-box img {
+  display: block;
+}
+.how-to-play {
+  margin-top: 36px;
+  border-top: 2px solid var(--line);
+  padding-top: 20px;
+}
+.how-to-play ol {
+  padding-left: 24px;
+}
+.controller-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 54px clamp(16px, 4vw, 64px);
+}
+.controller-page h1 {
+  max-width: 14ch;
+}
+.join-room {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin: 28px 0;
+}
+.join-room label {
+  grid-column: 1/-1;
+  font-weight: 700;
+}
+.join-room input {
+  height: 48px;
+  background: var(--slab);
+  border: 3px solid var(--chalk);
+  color: var(--chalk);
+  padding: 8px;
+  font: inherit;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.phone-players,
+.phone-move {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.phone-players button,
+.phone-move button {
+  min-height: 68px;
+}
+.phone-players [aria-pressed="true"] {
+  background: var(--lichen);
+  color: var(--soot);
+}
+@media (max-width: 760px) {
+  .room-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .join-room {
+    grid-template-columns: 1fr;
+  }
+  .join-room button {
+    width: 100%;
+  }
+}

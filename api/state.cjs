@@ -1,4 +1,0 @@
-const rooms = new Map(); const limits = new Map(); const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-exports.clean = () => { const now = Date.now(); for (const [key, value] of rooms) if (value.expires < now) rooms.delete(key); for (const [key, value] of limits) if (value.until < now) limits.delete(key); };
-exports.create = ip => { exports.clean(); const now = Date.now(), limit = limits.get(ip) || { count: 0, until: now + 60000 }; if (limit.until < now) { limit.count = 0; limit.until = now + 60000; } if (limit.count >= 8) return { limited: true, retry: Math.ceil((limit.until - now) / 1000) }; limit.count++; limits.set(ip, limit); let code = ''; do { code = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join(''); } while (rooms.has(code)); const expires = now + 1200000; rooms.set(code, { expires, moves: [] }); return { code, expires }; };
-exports.room = code => { exports.clean(); return rooms.get(code); };

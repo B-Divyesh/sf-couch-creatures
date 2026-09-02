@@ -1,6 +1,0 @@
-{
-  "name": "sf-couch-creatures-api",
-  "private": true,
-  "main": "rooms/index.js",
-  "dependencies": {}
-}

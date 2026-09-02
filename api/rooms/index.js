@@ -1,2 +1,0 @@
-const state = require('../state.cjs');
-module.exports = async function (context, req) { const created = state.create((req.headers['x-forwarded-for'] || 'unknown').split(',')[0]); if (created.limited) { context.res = { status: 429, headers: { 'Retry-After': String(created.retry) }, body: { error: 'Room creation limit reached. Try again shortly.' } }; return; } context.res = { status: 201, body: { room: created.code, expiresAt: new Date(created.expires).toISOString() } }; };

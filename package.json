@@ -3,11 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "realtime"
+  ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:unit": "npm --prefix realtime test",
+    "test:all": "npm test && npm run test:unit",
+    "test:live": "COUCH_SITE_URL=https://couch-creatures.sociobot.in playwright test",
+    "test:phone-claim": "COUCH_SITE_URL=https://couch-creatures.sociobot.in playwright test --grep @claim:phone-room && npm --prefix realtime test -- --test-name-pattern='room expiry'"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",

@@ -54,6 +54,9 @@ Every run contains three habitats: Drainway, Moss Court, and Window Garden.
 Each habitat has four creatures, seeded traits, weather, and three moving clay
 storms. The fixed demo seed is `moss-postcard-17`; non-demo routes use a fresh
 browser-generated seed. Each habitat lasts 180 seconds, giving a complete run
-three shelter windows (nine minutes). Three storm strikes create a recoverable
-loss state. Assist mode widens lantern light and slows storm strikes. Four
-local lanterns are available by keyboard and labelled touch pads.
+three shelter windows (nine minutes). Failing to shelter two creatures before
+a window closes creates a recoverable loss. Three storm strikes create the
+other loss state. The final postcard reports the sheltered total out of 12
+rather than implying every creature was saved. Assist mode widens lantern
+light and slows storm strikes. Four local lanterns are available by keyboard
+and labelled touch pads.

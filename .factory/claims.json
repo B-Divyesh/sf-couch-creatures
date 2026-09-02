@@ -1,11 +1,86 @@
 [
-  {"id":"demo-isolated","claim":"Try it with sample data uses a separate demo storage namespace.","where":"landing action, demo banner, README","test":"npm test -- --grep @claim:demo-isolated","sandbox":"fresh browser context; homepage action enters /demo, stores assist only under demo:couch-creatures:* and survives reload"},
-  {"id":"end-screen","claim":"A full rescue reaches a group postcard.","where":"game end screen, README","test":"npm test -- --grep @claim:end-screen","sandbox":"fresh demo game; click the public sample rescue replay, which runs the normal deterministic simulation through all three habitats"},
-  {"id":"restart-resets","claim":"Play a new route resets a completed run.","where":"group postcard","test":"npm test -- --grep @claim:restart-resets","sandbox":"fresh demo game; use public sample replay, play a new route, assert habitat one and hidden postcard"},
-  {"id":"recovery","claim":"Refreshing restores an active rescue.","where":"game settings, README","test":"npm test -- --grep @claim:recovery","sandbox":"fresh demo game; reject malformed JSON-shape save, start, persist active state, reload, assert paused recovery state"},
-  {"id":"four-players","claim":"Two to four local players can use keyboard and touch controls.","where":"landing, game controls, README","test":"npm test -- --grep @claim:four-players","sandbox":"fresh demo game; assert four labelled touch pairs and keyboard/touch movement changes players three and four"},
-  {"id":"hazards-and-loss","claim":"Moving hazards can end a route and the same seeded route can be retried.","where":"game board and loss state","test":"npm test -- --grep @claim:hazards-and-loss","sandbox":"fresh demo game; public storm replay runs real collision steps, then retry returns to habitat one"},
-  {"id":"nine-minute-pace","claim":"A complete run has three 180-second shelter windows (nine minutes).","where":"landing, game board, README","test":"npm test -- --grep @claim:nine-minute-pace","sandbox":"assert landing pacing copy and initial board countdown of 180 seconds"},
-  {"id":"local-only","claim":"No account or child data is collected and demo play makes no cross-origin requests.","where":"landing facts, privacy page, README","test":"npm test -- --grep @claim:local-only","sandbox":"record whole primary homepage-to-demo journey and play action; assert same-origin requests only"},
-  {"id":"phone-room","claim":"A temporary phone room forwards a selected lantern move and limits room creation to eight per minute per client.","where":"phone controller, Privacy, README","test":"npm test -- --grep @claim:phone-room","sandbox":"local product relay; create eight rooms, assert ninth has 429 and Retry-After, then forward one valid controller move to a game socket"}
+  {
+    "id": "demo-isolated",
+    "claim": "Try it with sample data uses a separate demo storage namespace.",
+    "where": "first-screen action, demo banner, README",
+    "test": "npm test -- --grep @claim:demo-isolated",
+    "sandbox": "fresh browser context; the exact first-screen action enters /demo, stores assist only under demo:couch-creatures:*, and survives reload"
+  },
+  {
+    "id": "end-screen",
+    "claim": "A full rescue reaches a postcard with the truthful rescued total out of 12.",
+    "where": "game end screen, README",
+    "test": "npm test -- --grep @claim:end-screen",
+    "sandbox": "fresh demo game; the public sample replay runs the normal deterministic simulation through all habitats and the UI total equals saved state"
+  },
+  {
+    "id": "restart-resets",
+    "claim": "Play a new route resets a completed run.",
+    "where": "group postcard",
+    "test": "npm test -- --grep @claim:restart-resets",
+    "sandbox": "fresh demo game; finish the public replay, restart, and assert ready phase, habitat one, zero rescued, and zero elapsed"
+  },
+  {
+    "id": "recovery",
+    "claim": "Refreshing restores an active rescue as paused.",
+    "where": "game settings, README",
+    "test": "npm test -- --grep @claim:recovery",
+    "sandbox": "fresh demo game; reject a malformed save, create a valid active save, reload, and assert paused recovery without page errors"
+  },
+  {
+    "id": "four-players",
+    "claim": "Two to four local players can use keyboard and touch controls.",
+    "where": "first screen, game controls, README",
+    "test": "npm test -- --grep @claim:four-players",
+    "sandbox": "fresh demo game; assert four labelled touch pairs and keyboard/touch movement for players three and four"
+  },
+  {
+    "id": "hazards-and-loss",
+    "claim": "Moving hazards can end a route and the same seeded route can be retried.",
+    "where": "game board, loss screen, README",
+    "test": "npm test -- --grep @claim:hazards-and-loss",
+    "sandbox": "fresh demo game; public storm replay runs real collision steps to loss, then retry resets the run and keeps the seed"
+  },
+  {
+    "id": "nine-minute-pace",
+    "claim": "A run has three 180-second shelter windows; missing one loses and completing all three ends near 540 seconds.",
+    "where": "game board, settings, README",
+    "test": "npm test -- --grep @claim:nine-minute-pace",
+    "sandbox": "restore the verifier's exact 180.1-second zero-ready state, assert deadline loss and retry, then run the public rescue to a 540-second postcard"
+  },
+  {
+    "id": "local-only",
+    "claim": "Demo play creates no child profile, uses only demo storage, and makes no cross-origin requests.",
+    "where": "first-screen fact, privacy page, README",
+    "test": "npm test -- --grep @claim:local-only",
+    "sandbox": "record the demo play journey, assert every request is same-origin, and assert every written key uses the demo namespace"
+  },
+  {
+    "id": "loaded-offline",
+    "claim": "Loaded shared-device play keeps working if the network drops.",
+    "where": "first-screen fact, README",
+    "test": "npm test -- --grep @claim:loaded-offline",
+    "sandbox": "fresh dedicated browser context; load demo, set the context offline, move a lantern, and assert active local state"
+  },
+  {
+    "id": "free-play",
+    "claim": "Couch Creatures is free and exposes no ads, checkout, or purchase action.",
+    "where": "first-screen fact, terms, README",
+    "test": "npm test -- --grep @claim:free-play",
+    "sandbox": "fresh homepage and terms route; assert the free-play statement and absence of ad, billing, checkout, and purchase UI"
+  },
+  {
+    "id": "frame-rate",
+    "claim": "Active play renders at least 55 frames per second at 390px under 4x CPU slowdown.",
+    "where": "README, handoff",
+    "test": "npm test -- --grep @claim:frame-rate",
+    "sandbox": "fresh 390x844 browser context; enable 4x CPU throttling, start demo play, and measure requestAnimationFrame for three seconds"
+  },
+  {
+    "id": "phone-room",
+    "claim": "A 20-minute phone room forwards concurrent moves without cursor stalls and allows eight creations per minute per connection.",
+    "where": "phone controller, privacy page, README",
+    "test": "npm run test:phone-claim",
+    "sandbox": "live product; pair the real controller UI, deliver 20 concurrent moves, cross the 120-move buffer, assert monotonic delivery, validate 20-minute expiry metadata and boundary logic, then assert the ninth creation is 429 with Retry-After"
+  }
 ]
