@@ -17,10 +17,21 @@ function roomCode() {
 
 export function createStore(path = ":memory:") {
   const db = new DatabaseSync(path);
-  db.exec("PRAGMA journal_mode = WAL");
-  db.exec("PRAGMA foreign_keys = ON");
+  const retryLocked = (work) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return work();
+      } catch (error) {
+        if (error?.errcode !== 5 || attempt >= 9) throw error;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+      }
+    }
+  };
   db.exec("PRAGMA busy_timeout = 5000");
-  db.exec(`
+  retryLocked(() => db.exec("PRAGMA journal_mode = DELETE"));
+  db.exec("PRAGMA foreign_keys = ON");
+
+  const schema = `
     CREATE TABLE IF NOT EXISTS rooms (
       code TEXT PRIMARY KEY,
       expires_at INTEGER NOT NULL,
@@ -39,7 +50,8 @@ export function createStore(path = ":memory:") {
       window_started_at INTEGER NOT NULL,
       count INTEGER NOT NULL
     ) STRICT;
-  `);
+  `;
+  retryLocked(() => db.exec(schema));
 
   const statements = {
     cleanRooms: db.prepare("DELETE FROM rooms WHERE expires_at <= ?"),
