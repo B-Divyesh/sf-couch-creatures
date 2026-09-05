@@ -15,10 +15,20 @@ async function demoState(page: Page) {
   );
 }
 
+async function realState(page: Page) {
+  return page.evaluate(() =>
+    JSON.parse(localStorage.getItem("couch-creatures:run") || "{}"),
+  );
+}
+
 test("@claim:demo-isolated the sample action uses only the demo namespace", async ({
   page,
 }) => {
   await page.goto("/");
+  await page.evaluate(() =>
+    localStorage.setItem("couch-creatures:assist", "true"),
+  );
+  const realRun = await realState(page);
   await page
     .getByRole("link", { name: "Try it with sample data", exact: true })
     .click();
@@ -36,9 +46,108 @@ test("@claim:demo-isolated the sample action uses only the demo namespace", asyn
     .poll(() =>
       page.evaluate(() => localStorage.getItem("couch-creatures:assist")),
     )
-    .toBeNull();
+    .toBe("true");
   await page.reload();
   await expect(page.getByLabel(/Assist mode/)).toBeChecked();
+  await page.getByRole("button", { name: "Move player one right" }).click();
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.getByLabel(/Assist mode/)).not.toBeChecked();
+  await expect(page.getByLabel("Demo status")).toContainText(
+    "sample data, nothing is saved",
+  );
+  expect(await demoState(page)).toMatchObject({
+    phase: "ready",
+    habitat: 0,
+    rescued: 0,
+    elapsed: 0,
+    seed: "moss-postcard-17",
+  });
+  expect(await realState(page)).toEqual(realRun);
+  await page.getByRole("button", { name: "Start for real" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).filter((storageKey) =>
+        storageKey.startsWith("demo:couch-creatures:"),
+      ),
+    ),
+  ).toEqual([]);
+  expect(await realState(page)).toEqual(realRun);
+  await expect(page.getByLabel(/Assist mode/)).toBeChecked();
+});
+
+test("@claim:assist-mode assist widens lantern reach, slows storm strikes, and persists", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/demo");
+
+  const installReachScenario = () => {
+    const storageKey = "demo:couch-creatures:run";
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    saved.phase = "playing";
+    saved.elapsed = 0;
+    saved.strikes = 0;
+    saved.lanterns = [90, 42, 42, 42];
+    saved.creatures[0] = {
+      ...saved.creatures[0],
+      x: 220,
+      y: 306,
+      progress: 0,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(saved));
+  };
+
+  await page.evaluate(installReachScenario);
+  await page.reload();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await page.waitForTimeout(1_100);
+  await page.keyboard.press("Escape");
+  const normalProgress = (await demoState(page)).creatures[0].progress;
+
+  await page.getByLabel(/Assist mode/).check();
+  await page.evaluate(installReachScenario);
+  await page.reload();
+  await expect(page.getByLabel(/Assist mode/)).toBeChecked();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await page.waitForTimeout(1_100);
+  await page.keyboard.press("Escape");
+  const assistProgress = (await demoState(page)).creatures[0].progress;
+  expect(normalProgress).toBe(0);
+  expect(assistProgress).toBeGreaterThan(1);
+
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await page.getByRole("button", { name: "Watch storm loss" }).click();
+  await expect(
+    page.getByRole("heading", { name: "The group needs another try" }),
+  ).toBeVisible({ timeout: 15_000 });
+  const normalLossTime = (await demoState(page)).elapsed;
+  await page.getByRole("button", { name: "Try this route again" }).click();
+  await page.getByLabel(/Assist mode/).check();
+  await page.getByRole("button", { name: "Watch storm loss" }).click();
+  await expect
+    .poll(async () => (await demoState(page)).phase, { timeout: 15_000 })
+    .toBe("lost");
+  const assistedLoss = await demoState(page);
+  expect(assistedLoss.lossReason).toBe("storm");
+  expect(assistedLoss.elapsed).toBeGreaterThan(normalLossTime * 1.5);
+});
+
+test("@claim:pause-control Escape pauses time and resumes the same run", async ({
+  page,
+}) => {
+  await page.goto("/demo");
+  await page.getByRole("button", { name: "Move player one right" }).click();
+  await expect.poll(async () => (await demoState(page)).elapsed).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+  const paused = await demoState(page);
+  await page.waitForTimeout(600);
+  expect((await demoState(page)).elapsed).toBe(paused.elapsed);
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(async () => (await demoState(page)).elapsed)
+    .toBeGreaterThan(paused.elapsed);
 });
 
 test("@claim:end-screen a public seeded rescue reaches a truthful group postcard", async ({
@@ -174,24 +283,39 @@ test("@claim:nine-minute-pace the 180-second shelter deadline causes a real loss
   expect(completed.elapsed).toBeLessThan(540.1);
 });
 
-test("@claim:local-only demo play stores no child profile and makes no cross-origin requests", async ({
+test("@claim:local-only demo play uses only demo storage and never contacts the room relay", async ({
   page,
 }) => {
   const expectedOrigin = new URL(
     process.env.COUCH_SITE_URL || "http://127.0.0.1:4173",
   ).origin;
   const external: string[] = [];
+  const relayRequests: string[] = [];
   page.on("request", (request) => {
-    if (new URL(request.url()).origin !== expectedOrigin)
+    const url = new URL(request.url());
+    if (url.origin !== expectedOrigin)
       external.push(request.url());
+    if (url.pathname.startsWith("/api/")) relayRequests.push(request.url());
   });
   await page.goto("/demo");
+  await expect(
+    page.getByRole("heading", { name: "Phone rooms stay off in the demo" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start phone room" }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Move player two right" }).click();
+  await page.getByRole("button", { name: "Watch storm loss" }).click();
+  await expect
+    .poll(async () => (await demoState(page)).phase, { timeout: 15_000 })
+    .toBe("lost");
+  await page.getByRole("button", { name: "Reset demo" }).click();
   const keys = await page.evaluate(() => Object.keys(localStorage));
   expect(
     keys.every((storageKey) => storageKey.startsWith("demo:couch-creatures:")),
   ).toBe(true);
   expect(external).toEqual([]);
+  expect(relayRequests).toEqual([]);
 });
 
 test("@claim:loaded-offline loaded shared-device play keeps working after the network drops", async ({
@@ -209,15 +333,18 @@ test("@claim:loaded-offline loaded shared-device play keeps working after the ne
   await context.close();
 });
 
-test("@claim:free-play the game exposes no ads, checkout, or purchase action", async ({
+test("@claim:free-play the game needs no account and exposes no ads, checkout, or purchase action", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page.getByText("No account or child profile.")).toBeVisible();
   await expect(page.getByText("Free, with no ads or purchases.")).toBeVisible();
   expect(await page.locator("iframe").count()).toBe(0);
   expect(
     await page
-      .locator('a[href*="checkout"],a[href*="billing"],[data-ad]')
+      .locator(
+        'a[href*="checkout"],a[href*="billing"],a[href*="login"],input[type="email"],input[type="password"],[data-ad]',
+      )
       .count(),
   ).toBe(0);
   await page.goto("/terms");
@@ -230,7 +357,7 @@ test("@claim:phone-room the live room relay forwards concurrent moves, advances 
   page,
   context,
 }) => {
-  await page.goto("/demo");
+  await page.goto("/");
   const health = await page.evaluate(async () => {
     const response = await fetch("/api/health");
     return {
@@ -297,7 +424,7 @@ test("@claim:phone-room the live room relay forwards concurrent moves, advances 
   await phone.getByRole("button", { name: "Lantern 3" }).click();
   await phone.getByRole("button", { name: "Move left" }).click();
   await expect(phone.getByText("Lantern 3 moved left.")).toBeVisible();
-  await expect.poll(async () => (await demoState(page)).lanterns[2]).toBe(342);
+  await expect.poll(async () => (await realState(page)).lanterns[2]).toBe(342);
 
   const concurrent = await page.evaluate(
     async (roomCode) =>
@@ -439,6 +566,120 @@ test("normalized RNG keeps public seeded creatures and storms on the board", asy
       state.creatures.map((creature: { trait: string }) => creature.trait),
     ).size,
   ).toBe(4);
+});
+
+test("@claim:site-structure every route updates share metadata and an unknown URL returns the complete 404 page", async ({
+  page,
+}) => {
+  const routes = [
+    {
+      path: "/",
+      title: "Couch Creatures — Guide creatures home together",
+      description:
+        "Play a nine-minute shared creature rescue with four local or phone controllers.",
+    },
+    {
+      path: "/demo",
+      title: "Demo — Couch Creatures",
+      description:
+        "Play a nine-minute shared creature rescue with four local or phone controllers.",
+    },
+    {
+      path: "/privacy",
+      title: "Privacy — Couch Creatures",
+      description:
+        "How Couch Creatures stores shared-play settings on your device.",
+    },
+    {
+      path: "/terms",
+      title: "Terms — Couch Creatures",
+      description: "Terms for the Couch Creatures shared-screen game.",
+    },
+    {
+      path: "/controller",
+      title: "Phone controls — Couch Creatures",
+      description:
+        "Use a phone as a one-thumb Couch Creatures lantern controller.",
+    },
+  ];
+  for (const expected of routes) {
+    await page.goto(expected.path);
+    await expect(page).toHaveTitle(expected.title);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      expected.description,
+    );
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      expected.title,
+    );
+    await expect(
+      page.locator('meta[property="og:description"]'),
+    ).toHaveAttribute("content", expected.description);
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute(
+      "content",
+      expected.title,
+    );
+    await expect(
+      page.locator('meta[name="twitter:description"]'),
+    ).toHaveAttribute("content", expected.description);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      `https://couch-creatures.sociobot.in${expected.path}`,
+    );
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+      "content",
+      `https://couch-creatures.sociobot.in${expected.path}`,
+    );
+  }
+
+  const response = await page.goto("/not-a-couch-creatures-route");
+  expect(response?.status()).toBe(404);
+  await expect(page).toHaveTitle("Page not found — Couch Creatures");
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy" })).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Terms" })).toHaveCount(2);
+  await expect(page.locator("footer")).toContainText(
+    "A shared-screen creature rescue for 2–4 players.",
+  );
+  await expect(page.locator("footer")).toContainText(
+    "Built by Param Factory · v1.4.0",
+  );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "The requested Couch Creatures page was not found. Return to the shared rescue game.",
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://couch-creatures.sociobot.in/404.html",
+  );
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://couch-creatures.sociobot.in/social-card.webp",
+  );
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+    "content",
+    "summary_large_image",
+  );
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/favicon.svg",
+  );
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#202723",
+  );
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(
+    results.violations.filter((violation) =>
+      ["serious", "critical"].includes(violation.impact || ""),
+    ),
+  ).toEqual([]);
 });
 
 test("cold desktop and mobile screens show the audience, sample action, facts, playable board, and accessible routes", async ({

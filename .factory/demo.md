@@ -6,4 +6,4 @@ Every demo key starts with `demo:couch-creatures:`. This includes assist mode an
 
 The four labelled touch pads and shared keyboard are included in the demo. **Watch sample rescue** and **Watch storm loss** run the actual seeded rules at replay speed; they do not set a terminal snapshot or change creature readiness. The rescue postcard reports the sheltered total out of 12.
 
-A demo may create a temporary QR phone room through the same-origin `/api` relay. It forwards selected left/right presses, keeps a monotonic move cursor, and expires after 20 minutes. Room data lives in the product relay, not either browser storage namespace.
+Phone rooms stay off in demo mode. The demo has no phone-room action and makes no `/api` request. Choose **Start for real** before pairing a phone. Real play then creates the 20-minute room in the product relay.

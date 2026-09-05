@@ -84,6 +84,10 @@ export async function createStore(path = ":memory:") {
     }
   };
   const deleteExpired = (now) => {
+    db.run(
+      "DELETE FROM moves WHERE room_code IN (SELECT code FROM rooms WHERE expires_at <= ?)",
+      [now],
+    );
     db.run("DELETE FROM rooms WHERE expires_at <= ?", [now]);
     db.run("DELETE FROM create_limits WHERE window_started_at + ? <= ?", [
       CREATE_WINDOW_MS,

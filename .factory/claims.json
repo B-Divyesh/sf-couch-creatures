@@ -1,10 +1,10 @@
 [
   {
     "id": "demo-isolated",
-    "claim": "Try it with sample data uses a separate demo storage namespace.",
-    "where": "first-screen action, demo banner, README",
+    "claim": "Try it with sample data uses separate storage; Reset demo clears only the sample and Start for real preserves real play.",
+    "where": "first-screen action, demo banner, privacy page, README",
     "test": "npm test -- --grep @claim:demo-isolated",
-    "sandbox": "fresh browser context; the exact first-screen action enters /demo, stores assist only under demo:couch-creatures:*, and survives reload"
+    "sandbox": "fresh browser context with a real run present; enter through the exact first-screen action, change and reset the sample, then leave demo and assert demo keys are gone while real run and assist data are unchanged"
   },
   {
     "id": "end-screen",
@@ -26,6 +26,20 @@
     "where": "game settings, README",
     "test": "npm test -- --grep @claim:recovery",
     "sandbox": "fresh demo game; reject a malformed save, create a valid active save, reload, and assert paused recovery without page errors"
+  },
+  {
+    "id": "assist-mode",
+    "claim": "Assist mode widens lantern reach, slows storm strikes, and remains enabled after reload.",
+    "where": "play settings, README",
+    "test": "npm test -- --grep @claim:assist-mode",
+    "sandbox": "fresh reduced-motion demo; compare the same creature position outside normal reach and inside assist reach, compare natural storm-loss times, and reload the enabled setting"
+  },
+  {
+    "id": "pause-control",
+    "claim": "Escape pauses and resumes an active run without advancing game time while paused.",
+    "where": "play settings, README",
+    "test": "npm test -- --grep @claim:pause-control",
+    "sandbox": "fresh demo run; start play, press Escape, observe elapsed time remain fixed, press Escape again, and observe time resume"
   },
   {
     "id": "four-players",
@@ -50,10 +64,10 @@
   },
   {
     "id": "local-only",
-    "claim": "Demo play creates no child profile, uses only demo storage, and makes no cross-origin requests.",
+    "claim": "Demo play creates no child profile, uses only demo storage, and makes no cross-origin or room-relay requests.",
     "where": "first-screen fact, privacy page, README",
     "test": "npm test -- --grep @claim:local-only",
-    "sandbox": "record the demo play journey, assert every request is same-origin, and assert every written key uses the demo namespace"
+    "sandbox": "record movement, a real simulated loss, and reset in a fresh demo; assert no /api request, no cross-origin request, no phone-room action, and only demo-prefixed browser keys"
   },
   {
     "id": "loaded-offline",
@@ -64,7 +78,7 @@
   },
   {
     "id": "free-play",
-    "claim": "Couch Creatures is free and exposes no ads, checkout, or purchase action.",
+    "claim": "Couch Creatures needs no account and exposes no child profile, ads, checkout, or purchase action.",
     "where": "first-screen fact, terms, README",
     "test": "npm test -- --grep @claim:free-play",
     "sandbox": "fresh homepage and terms route; assert the free-play statement and absence of ad, billing, checkout, and purchase UI"
@@ -77,10 +91,24 @@
     "sandbox": "fresh 390x844 browser context; enable 4x CPU throttling, start demo play, and measure requestAnimationFrame for three seconds"
   },
   {
+    "id": "site-structure",
+    "claim": "Every public route sets its own metadata, and unknown URLs return a complete styled page with HTTP 404.",
+    "where": "public routes, 404 page, README",
+    "test": "npm test -- --grep @claim:site-structure",
+    "sandbox": "visit every public route and assert route title, description, canonical, Open Graph and Twitter values; request an unknown URL and assert HTTP 404, complete header/footer links, metadata, styling hooks, and accessibility"
+  },
+  {
     "id": "phone-room",
     "claim": "A 20-minute phone room forwards concurrent moves without cursor stalls and allows eight creations per minute per connection.",
     "where": "phone controller, privacy page, README",
     "test": "npm run test:phone-claim",
     "sandbox": "live product; pair the real controller UI, deliver 20 concurrent moves, cross the 120-move buffer, assert monotonic delivery, validate 20-minute expiry metadata and boundary logic, then assert the ninth creation is 429 with Retry-After"
+  },
+  {
+    "id": "phone-data",
+    "claim": "Phone rooms store room operations and a one-way connection hash, then remove expired room and creation-limit records.",
+    "where": "privacy page, README",
+    "test": "npm run test:unit -- --test-name-pattern='@claim:phone-data'",
+    "sandbox": "temporary SQLite file; create a room through the real handler, send a move, inspect persisted rows and the hashed address, advance past expiry, run cleanup, and assert room, move, and limit rows are gone"
   }
 ]

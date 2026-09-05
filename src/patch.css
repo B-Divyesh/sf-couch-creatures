@@ -38,6 +38,10 @@ footer a {
 .room-panel #qr-box img {
   display: block;
 }
+.demo-room-note {
+  border-left: 6px solid var(--lichen);
+  padding-left: 18px;
+}
 .how-to-play {
   margin-top: 36px;
   border-top: 2px solid var(--line);

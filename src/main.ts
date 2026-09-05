@@ -144,17 +144,24 @@ function savedRun(): Snapshot | undefined {
   return;
 }
 function shell(content: string, title: string, description: string) {
+  const canonical = `https://couch-creatures.sociobot.in${location.pathname}`;
   document.title = title;
   document
     .querySelector('meta[name="description"]')
     ?.setAttribute("content", description);
   document
     .querySelector<HTMLLinkElement>('link[rel="canonical"]')
-    ?.setAttribute(
-      "href",
-      `https://couch-creatures.sociobot.in${location.pathname}`,
-    );
-  app.innerHTML = `<a class="skip-link" href="#main">Skip to game</a><header class="site-header"><a class="wordmark" href="/" data-route aria-label="Couch Creatures home"><span aria-hidden="true">▰</span> Couch Creatures</a><nav aria-label="Main navigation">${link("/demo", "Demo")}${link("/controller", "Phone controls")}${link("/privacy", "Privacy")}${link("/terms", "Terms")}</nav></header>${demoMode() ? `<aside class="demo-banner" aria-label="Demo status"><strong>Demo — sample data, nothing is saved</strong><button id="reset-demo" class="text-button">Reset demo</button><button id="start-real" class="text-button">Start for real</button></aside>` : ""}<main id="main" tabindex="-1">${content}</main><footer><span>A shared-screen creature rescue for 2–4 players.</span>${link("/privacy", "Privacy")}${link("/terms", "Terms")}<span>Built by Param Factory · v1.3.0</span><small>Artwork is AI-generated and original to Couch Creatures.</small></footer><div id="route-announcer" class="sr-only" aria-live="polite"></div>`;
+    ?.setAttribute("href", canonical);
+  const routeMetadata: Record<string, string> = {
+    'meta[property="og:title"]': title,
+    'meta[property="og:description"]': description,
+    'meta[property="og:url"]': canonical,
+    'meta[name="twitter:title"]': title,
+    'meta[name="twitter:description"]': description,
+  };
+  for (const [selector, value] of Object.entries(routeMetadata))
+    document.querySelector(selector)?.setAttribute("content", value);
+  app.innerHTML = `<a class="skip-link" href="#main">Skip to main content</a><header class="site-header"><a class="wordmark" href="/" data-route aria-label="Couch Creatures home"><span aria-hidden="true">▰</span> Couch Creatures</a><nav aria-label="Main navigation">${link("/demo", "Demo")}${link("/controller", "Phone controls")}${link("/privacy", "Privacy")}${link("/terms", "Terms")}</nav></header>${demoMode() ? `<aside class="demo-banner" aria-label="Demo status"><strong>Demo — sample data, nothing is saved</strong><button id="reset-demo" class="text-button">Reset demo</button><button id="start-real" class="text-button">Start for real</button></aside>` : ""}<main id="main" tabindex="-1">${content}</main><footer><span>A shared-screen creature rescue for 2–4 players.</span>${link("/privacy", "Privacy")}${link("/terms", "Terms")}<span>Built by Param Factory · v1.4.0</span></footer><div id="route-announcer" class="sr-only" aria-live="polite"></div>`;
   app.querySelectorAll<HTMLAnchorElement>("[data-route]").forEach((a) =>
     a.addEventListener("click", (e) => {
       e.preventDefault();
@@ -583,9 +590,11 @@ class Game {
   }
 }
 function controls() {
-  return `<section class="touch-controls" aria-label="Touch controls">${["one", "two", "three", "four"].map((name, i) => `<div class="player-control p${i + 1}"><strong>Player ${name}</strong><span>${playerKeys[i][0].replace("arrowleft", "←")} / ${playerKeys[i][1].replace("arrowright", "→")}</span><button class="touch" data-player="${i}" data-dir="-1" aria-label="Move player ${name} left">◀</button><button class="touch" data-player="${i}" data-dir="1" aria-label="Move player ${name} right">▶</button></div>`).join("")}</section>${demoMode() ? `<section class="demo-replay" aria-labelledby="replay-title"><h2 id="replay-title">Watch the sample route</h2><p>Run the same public rules at replay speed before sharing the controls.</p><button id="replay-rescue" class="button">Watch sample rescue</button><button id="replay-storm" class="button">Watch storm loss</button></section>` : ""}`;
+  return `<section class="touch-controls" aria-label="Touch controls">${["one", "two", "three", "four"].map((name, i) => `<div class="player-control p${i + 1}"><strong>Player ${name}</strong><span>${playerKeys[i][0].replace("arrowleft", "←")} / ${playerKeys[i][1].replace("arrowright", "→")}</span><button class="touch" data-player="${i}" data-dir="-1" aria-label="Move player ${name} left">◀</button><button class="touch" data-player="${i}" data-dir="1" aria-label="Move player ${name} right">▶</button></div>`).join("")}</section>${demoMode() ? `<section class="demo-replay" aria-labelledby="replay-title"><h2 id="replay-title">Watch the sample route</h2><p>See how the fixed sample can finish or fail.</p><button id="replay-rescue" class="button">Watch sample rescue</button><button id="replay-storm" class="button">Watch storm loss</button></section>` : ""}`;
 }
 function roomPanel() {
+  if (demoMode())
+    return `<section class="room-panel demo-room-note" aria-labelledby="room-title"><div><p class="eyebrow">Demo controls</p><h2 id="room-title">Phone rooms stay off in the demo</h2><p>Use the keyboard or touch pads above. Start for real to pair a phone.</p></div></section>`;
   return `<section class="room-panel" aria-labelledby="room-title"><div><p class="eyebrow">Phone controller</p><h2 id="room-title">Add a phone controller</h2><p>Start a room, scan its QR code, then choose a lantern on the phone.</p><button id="start-room" class="button primary">Start phone room</button><p id="room-status" aria-live="polite"></p></div><div id="qr-box" hidden><img id="room-qr" width="220" height="220" alt="QR code for joining this Couch Creatures phone controller room."><p>Room <strong id="room-code"></strong></p></div></section>`;
 }
 function gamePage() {
@@ -595,10 +604,10 @@ function gamePage() {
     ? ""
     : `<div class="cold-start"><p class="audience">For families and friends sharing one device, guide four creatures through storms before each shelter closes.</p><div class="cold-actions">${link("/demo", "Try it with sample data", "button primary")}<span>Starts a fixed sample route. Demo changes stay separate.</span></div><ul class="first-facts"><li>No account or child profile.</li><li>Loaded shared-device play works without a network.</li><li>Free, with no ads or purchases.</li></ul></div>`;
   shell(
-    `<section class="game-page"><div class="game-top"><div><p class="eyebrow">Seed: ${seed}</p><h1>Guide creatures home together</h1>${coldStart}<p id="status" aria-live="polite"></p></div><button class="button quiet" id="pause">Pause</button></div><div class="canvas-wrap"><canvas id="game" role="img" aria-label="Creature rescue board. Players one to four move lanterns with A and D, J and L, F and H, or left and right arrows."></canvas></div>${controls()}${roomPanel()}<section class="game-tools" aria-labelledby="settings-title"><h2 id="settings-title">Play settings</h2><label><input id="assist" type="checkbox"> Assist mode widens lantern light and slows storm strikes</label><p>Each habitat has a three-minute shelter window. Shelter two creatures before time runs out or the route ends. Move spare lanterns away from clay storms. Escape pauses. Refreshing restores this run.</p></section><section class="result" id="lost" hidden aria-labelledby="lost-title"><h2 id="lost-title"></h2><p id="lost-copy"></p><button class="button primary" id="retry">Try this route again</button></section><section class="postcard" id="postcard" hidden aria-labelledby="postcard-title"><img src="/moss-rescue.webp" width="1200" height="800" alt="Three rescued creatures stand at their mossy shelter."><div><p class="eyebrow">Group postcard</p><h2 id="postcard-title">Rescue total</h2><p id="postcard-copy"></p><button class="button primary" id="again">Play a new route</button></div></section><section class="how-to-play" aria-labelledby="how-title"><h2 id="how-title">How this rescue works</h2><ol><li>Start with a lantern key or touch pad.</li><li>Shelter at least two creatures before the timer reaches zero.</li><li>Move lanterns clear of three clay-storm strikes.</li></ol></section></section>`,
+    `<section class="game-page"><div class="game-top"><div><p class="eyebrow">${demoMode() ? "Fixed sample route" : "Shared rescue"}</p><h1>Guide creatures home together</h1>${coldStart}<p id="status" aria-live="polite"></p></div><button class="button quiet" id="pause">Pause</button></div><div class="canvas-wrap"><canvas id="game" role="img" aria-label="Creature rescue board. Players one to four move lanterns with A and D, J and L, F and H, or left and right arrows."></canvas></div>${controls()}${roomPanel()}<section class="game-tools" aria-labelledby="settings-title"><h2 id="settings-title">Play settings</h2><label><input id="assist" type="checkbox"> Assist mode widens lantern light and slows storm strikes</label><p>Each habitat has a three-minute shelter window. Shelter two creatures before time runs out or the route ends. Move spare lanterns away from clay storms. Escape pauses. Refreshing restores this run.</p></section><section class="result" id="lost" hidden aria-labelledby="lost-title"><h2 id="lost-title"></h2><p id="lost-copy"></p><button class="button primary" id="retry">Try this route again</button></section><section class="postcard" id="postcard" hidden aria-labelledby="postcard-title"><img src="/moss-rescue.webp" width="1200" height="800" alt="Three rescued creatures stand at their mossy shelter."><div><p class="eyebrow">Group postcard</p><h2 id="postcard-title">Rescue total</h2><p id="postcard-copy"></p><button class="button primary" id="again">Play a new route</button></div></section><section class="how-to-play" aria-labelledby="how-title"><h2 id="how-title">How this rescue works</h2><ol><li>Start with a lantern key or touch pad.</li><li>Shelter at least two creatures before the timer reaches zero.</li><li>Move lanterns clear of three clay-storm strikes.</li></ol></section></section>`,
     demoMode()
       ? "Demo — Couch Creatures"
-      : "Couch Creatures — Shared creature rescue",
+      : "Couch Creatures — Guide creatures home together",
     "Play a nine-minute shared creature rescue with four local or phone controllers.",
   );
   const status = document.querySelector("#status")!,
@@ -631,8 +640,8 @@ function gamePage() {
         : "The group needs another try";
     lostCopy.textContent =
       game.lossReason === "deadline"
-        ? "Fewer than two creatures reached shelter in three minutes. Retrying keeps this route seed."
-        : "Three lanterns hit clay storms. Retrying keeps this route seed.";
+        ? "Fewer than two creatures reached shelter in three minutes. Retrying keeps the same route."
+        : "Three lanterns hit clay storms. Retrying keeps the same route.";
     postcardTitle.textContent = `${game.rescued} of 12 creatures reached shelter`;
     document.querySelector("#postcard-copy")!.textContent =
       `Your group finished all three habitats and sheltered ${game.rescued} creatures.`;
@@ -775,7 +784,7 @@ function controller2() {
 function legalPage(kind: "privacy" | "terms") {
   const privacy = kind === "privacy";
   shell(
-    `<section class="legal"><p class="eyebrow">Couch Creatures</p><h1>${privacy ? "Privacy for shared play" : "Terms for Couch Creatures"}</h1>${privacy ? "<p>Couch Creatures does not ask for names, accounts, photos, contacts, or location.</p><h2>What stays on this device</h2><p>Run recovery and assist mode stay in this browser.</p><h2>Phone rooms</h2><p>A phone room forwards room codes and left or right presses. The relay deletes rooms after 20 minutes.</p><p>A one-way connection hash limits room creation. The relay deletes expired limit records every minute.</p><h2>Demo mode</h2><p>The demo uses a separate local storage namespace. Reset demo clears it.</p>" : "<p>Couch Creatures is free to play and has no purchases.</p><h2>Safe play</h2><p>Choose what is suitable for your household. Do not play while walking or driving.</p><h2>Changes</h2><p>We may update the game or these terms.</p>"}</section>`,
+    `<section class="legal"><p class="eyebrow">Couch Creatures</p><h1>${privacy ? "Privacy for shared play" : "Terms for Couch Creatures"}</h1>${privacy ? "<p>Couch Creatures does not ask for names, accounts, photos, contacts, or location.</p><h2>What stays on this device</h2><p>Run recovery and assist mode stay in this browser.</p><h2>Phone rooms</h2><p>The relay stores a random room code, control presses, expiry times, and a one-way connection hash.</p><p>It deletes expired room and creation-limit records.</p><h2>Demo mode</h2><p>The demo uses separate browser storage and never contacts the phone-room relay. Reset demo clears only the sample.</p>" : "<p>Couch Creatures is free to play and has no purchases.</p><h2>Safe play</h2><p>Choose what is suitable for your household. Do not play while walking or driving.</p><h2>Changes</h2><p>We may update the game or these terms.</p>"}</section>`,
     `${privacy ? "Privacy" : "Terms"} — Couch Creatures`,
     privacy
       ? "How Couch Creatures stores shared-play settings on your device."
@@ -784,7 +793,7 @@ function legalPage(kind: "privacy" | "terms") {
 }
 function notFound() {
   shell(
-    `<section class="legal"><p class="eyebrow">Route missing</p><h1>This route has no creatures</h1><p>Go back to the rescue board.</p>${link("/", "Open Couch Creatures", "button primary")}</section>`,
+    `<section class="legal"><p class="eyebrow">404 error</p><h1>Page not found</h1><p>The requested page does not exist. Return to the game.</p>${link("/", "Open the game", "button primary")}</section>`,
     "Page not found — Couch Creatures",
     "The requested Couch Creatures page was not found.",
   );
