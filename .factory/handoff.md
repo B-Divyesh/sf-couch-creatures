@@ -190,3 +190,13 @@ zero untested public claims. See `.factory/verification-5.md`.
   reports the deployed relay SHA, SQLite, 20-minute rooms, eight creations per
   minute, and a 120-move buffer. The phone test verified concurrent moves,
   buffer rollover, and the HTTP 429/`Retry-After` boundary.
+
+## Review 2
+
+Fresh strict review on 2026-09-05 UTC: **PASS** with zero findings and zero untested public claims. The reviewed static implementation remains `189bf09db9b59631c5902b819fc9f4b3f16ebaab`; the live relay remains `b91da00c4b99851377fb5465f58ad8a3fd90e553`; the review documentation baseline is `c4dcc28a74b823e791b2dc52b7d75156bcc88246`.
+
+The live JS, CSS, and illustration hashes match a clean local build. Fresh desktop and phone contexts showed the game, job, audience, and sample action before scrolling. The demo label persisted; reset/exit preserved real data; and demo sent no relay requests. Fresh recorded runs reached the 6-of-12 postcard and the storm-loss screen.
+
+Verification commands passed: `npm ci`, `npm audit --json`, every exact claim command in `.factory/claims.json`, `npm test`, `npm run test:live -- --reporter=list`, `npm run build`, and `/opt/fleet/lib/verify-url.sh https://couch-creatures.sociobot.in /work/.evidence`. The final four live tests were rerun separately; live 390px/4×-CPU active play measured 60.16 fps. The repository Axe/Playwright checks had zero serious or critical issues on every route and the 404. The standalone Axe CLI could not launch in this worker because no Selenium Chrome binary is installed; the equivalent repository integration passed.
+
+All CC, CC2, CC3, and F-1 findings remain closed; see `.factory/review-2.md` for per-finding evidence. No product code was modified in this review.
