@@ -170,3 +170,23 @@ from the new ready revision. No deployment repair was needed.
 - Direct relay access is intentionally protected. Clients use the product's
   same-origin `/api` route.
 - No external integration is required by the researched game brief.
+
+## Verification 5
+
+Independent verification on 2026-09-05 UTC is **PASS** with zero findings and
+zero untested public claims. See `.factory/verification-5.md`.
+
+- Static implementation reviewed: `189bf09db9b59631c5902b819fc9f4b3f16ebaab`
+- Relay implementation reviewed: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
+- Documentation baseline reviewed: `fb42b0a4bebab9279029f64273d18e55baba3ea8`
+- Clean install, audit, all 16 exact claim commands, relay tests, and production
+  build passed. The live browser evidence covers all 17 cases; live active play
+  measured 60.22 fps under the documented 4× CPU slowdown.
+- Fresh desktop and phone pages showed the playable game, job, audience, first
+  action, and facts before scrolling. The demo banner persisted; reset and exit
+  preserved real storage. The deterministic rescue ended with 6 of 12
+  sheltered, and the storm loss reached its loss screen.
+- `/opt/fleet/lib/verify-url.sh` and axe checks passed. The relay health endpoint
+  reports the deployed relay SHA, SQLite, 20-minute rooms, eight creations per
+  minute, and a 120-move buffer. The phone test verified concurrent moves,
+  buffer rollover, and the HTTP 429/`Retry-After` boundary.
