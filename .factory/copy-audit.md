@@ -36,6 +36,7 @@ remains.
 | 8 | Start with a lantern key or touch pad. | Pass |
 | 10 | Shelter at least two creatures before the timer reaches zero. | Pass |
 | 8 | Move lanterns clear of three clay-storm strikes. | Pass |
+| 2 | Route complete | Pass |
 | 7 | A shared-screen creature rescue for 2–4 players. | Pass |
 
 ## Demo, legal, controller, and 404 copy

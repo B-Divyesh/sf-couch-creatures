@@ -568,7 +568,7 @@ class Game {
             ? "The shelter window closed"
             : "The storm scattered the group"
           : this.phase === "postcard"
-            ? "All shelters are warm"
+            ? "Route complete"
             : this.phase === "paused"
               ? "Paused"
               : "Press a player key to begin";
