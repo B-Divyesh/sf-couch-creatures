@@ -12,7 +12,7 @@ Player one uses A/D, player two J/L, player three F/H, and player four Left/Righ
 
 Start real play, then select **Start phone room** to show a QR code. A phone scans it, chooses one lantern, and sends left or right moves. Rooms expire after 20 minutes. One connection can create eight rooms per minute; the ninth response is `429` with `Retry-After`.
 
-The demo has public replay buttons for the full fixed rescue and a storm loss.
+The demo has public replay buttons for a completed fixed rescue and a storm loss.
 
 ## Run, test, and build
 

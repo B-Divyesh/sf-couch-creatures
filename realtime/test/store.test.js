@@ -145,3 +145,30 @@ test("@claim:phone-data SQLite stores only room operations and cleanup removes e
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("rooms stay isolated and their moves survive a store restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "couch-creatures-restart-"));
+  const databasePath = join(directory, "rooms.sqlite");
+  const now = Date.now();
+  try {
+    const firstStore = await createStore(databasePath);
+    const firstRoom = firstStore.createRoom("family-one", now);
+    const secondRoom = firstStore.createRoom("family-two", now);
+    firstStore.addMove(firstRoom.code, 0, -1, now + 1);
+    firstStore.addMove(secondRoom.code, 3, 1, now + 2);
+    firstStore.close();
+
+    const restartedStore = await createStore(databasePath);
+    assert.ok(restartedStore.getRoom(firstRoom.code, now + 3));
+    assert.ok(restartedStore.getRoom(secondRoom.code, now + 3));
+    assert.deepEqual(restartedStore.movesAfter(firstRoom.code, 0, now + 3).moves, [
+      { cursor: 1, player: 0, direction: -1 },
+    ]);
+    assert.deepEqual(restartedStore.movesAfter(secondRoom.code, 0, now + 3).moves, [
+      { cursor: 2, player: 3, direction: 1 },
+    ]);
+    restartedStore.close();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
