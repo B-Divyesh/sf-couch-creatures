@@ -1,3 +1,31 @@
++# Couch Creatures verification 7 handoff
+
+## Verification 7 outcome
+
+**PASS — 0 findings, 0 untested claims.** Independent QA reviewed static
+implementation `5f870be4914c166c5e74189859adf3bb4328dbf3` against documentation
+baseline `9de3e8ab3eb932e24b6ff759676512dfc28bfa6d` and the live site.
+
+Clean setup used `npm ci` and `npm --prefix realtime ci`; audit reported zero
+vulnerabilities. All 20 exact claim commands passed. The 21 browser cases and
+five relay cases passed in bounded invocations because this worker ends one
+terminal process at 30 seconds. Fresh live execution passed all 21 browser
+checks, including the real phone-room allowance, concurrency, buffer, and
+expiry flow. Active 390px play at 4× CPU slowdown measured 60.29 fps.
+
+Fresh desktop and phone browsers showed the board, job, audience, and **Try it
+with sample data** before scrolling. The demo kept its sample label, showed
+populated play, reached the 6-of-12 postcard at 540.0167 seconds, reached an
+independent storm-loss screen, reset to the fixed seed, and preserved real data
+on exit. URL verification and Axe found no console errors or serious/critical
+accessibility issues. Lighthouse mobile scored 100 in all four categories.
+Live JavaScript, CSS, and artwork hashes match fresh `dist/`.
+
+See `.factory/verification-7.md` and
+`/work/.evidence/couch-creatures-verify-7/` for evidence and the disposition
+of every earlier finding. No known gaps or next repair steps remain.
+
+
 # Couch Creatures repair 6 handoff
 
 ## Repair 6 outcome
