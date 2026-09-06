@@ -1,4 +1,19 @@
-+# Couch Creatures verification 7 handoff
+# Couch Creatures review 5 handoff
+
+## Review 5 outcome
+
+**PASS — 0 findings, 0 untested claims.** No product code changed.
+
+Review 5 independently checked the live site against static implementation `5f870be4914c166c5e74189859adf3bb4328dbf3`, documentation baseline `9cfb02e0ef147da78095ae32f31630a54934adcf`, and phone relay `b91da00c4b99851377fb5465f58ad8a3fd90e553`.
+
+From a clean dependency install, all 20 exact commands in `.factory/claims.json` passed. `npm run test:live -- --reporter=list` passed 21/21 live browser checks. `npm run build` produced `dist/`; `npm audit --json` reported zero vulnerabilities; active play measured 60.11 fps at 390px under 4× CPU slowdown. Local relay tests verified SQLite isolation, restart persistence, expiry, and cleanup.
+
+Fresh desktop and phone pages showed the game, job, audience, and **Try it with sample data** before scrolling with no errors or phone overflow. The one-click demo retained its sample label, made no relay request, reached a truthful 6-of-12 postcard and real storm loss, and reset to `moss-postcard-17`. Privacy, invalid room recovery, keyboard/touch, reduced motion, legal routes, metadata, and the designed 404 passed. `verify-url.sh` passed; repository Playwright Axe found no serious or critical issues on every route and 404. The standalone Axe CLI could not start its Selenium browser in this worker after the prerequisite installation; the equivalent passing Playwright Axe integration is the accessibility evidence.
+
+Live JavaScript, CSS, and artwork SHA-256 hashes match the clean `dist/` output. Evidence is under `/work/.evidence/couch-creatures-review-5/`; the full review is `.factory/review-5.md`. There are no known product gaps or next repair steps.
+
+
+# Couch Creatures verification 7 handoff
 
 ## Verification 7 outcome
 
