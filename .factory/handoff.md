@@ -1,5 +1,25 @@
 # Couch Creatures repair 4 handoff
 
+## Review 3
+
+Fresh strict review on 2026-09-06 UTC: **PASS** with zero findings and zero untested public claims. Static candidate `189bf09db9b59631c5902b819fc9f4b3f16ebaab` matched live JavaScript, CSS, and artwork. Documentation baseline is `6a6d9b162d0811bceee8069ef9dddeb4629bd820`; intervening commits are report-only. The live relay reports `b91da00c4b99851377fb5465f58ad8a3fd90e553`.
+
+Fresh desktop and phone sessions showed the playable board, job, audience, and sample action before scrolling, with no errors or phone overflow. Win/loss, reset/retry, keyboard/touch, pause/recovery, assist, loaded offline play, independent phone pairing, rate limiting, privacy, legal routes, metadata, and the designed HTTP 404 passed.
+
+Clean-install verification passed:
+
+```sh
+npm ci
+npm audit --json
+npm run build
+npm test
+npm run test:unit -- --test-name-pattern='@claim:phone-data'
+npm run test:phone-claim
+npm run test:live -- --reporter=list
+```
+
+All 16 exact commands in `.factory/claims.json` passed. Local browser tests were 17/17 with 60.34 fps at 390px and 4× CPU throttle; fresh live tests were 17/17 with a 60.29 fps independent check. `verify-url.sh` passed. The standalone Axe CLI lacks a system Selenium Chrome binary in this worker; installed Playwright Axe passed with zero serious or critical violations on every public route and 404. Full evidence: `.factory/review-3.md` and `/work/.evidence/`.
+
 ## Result
 
 **PASS.** All blocking and minor findings in `.factory/review-1.md` are fixed,
