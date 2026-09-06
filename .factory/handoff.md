@@ -1,4 +1,42 @@
-# Couch Creatures repair 4 handoff
+# Couch Creatures review 4 handoff
+
+## Review 4
+
+Fresh strict review on 2026-09-06 UTC: **FAIL** with two findings and four
+public claims without required declared coverage. No product code was changed.
+See `.factory/review-4.md` and `/work/.evidence/qa-report.md`.
+
+- Static implementation reviewed: `189bf09db9b59631c5902b819fc9f4b3f16ebaab`
+- Relay implementation reviewed: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
+- Documentation baseline reviewed: `208f55b4e7a5bfe97056d4783f10c209a6c6571e`
+- Live URL: <https://couch-creatures.sociobot.in>
+
+The complete desktop and phone loops reached the 6-of-12 postcard at 540.016
+seconds and the real storm-loss screen. Demo isolation, reset, real-data
+preservation, phone pairing, concurrency, rate limits, restart persistence,
+accessibility, reduced motion, legal routes, the designed HTTP 404, build,
+audit, and performance checks passed. All 16 declared claim commands passed.
+
+Open findings:
+
+1. The demo changes from fixed seed `moss-postcard-17` to a random seed after
+   **Play a new route**, while the UI and README continue to call it fixed.
+2. The required claim manifest has no exact coverage for fixed-demo behavior,
+   the README's 58px touch-button measurement, the privacy page's named data
+   categories, or the README's real shared-device cross-origin statement.
+
+Verification commands:
+
+```sh
+npm ci
+npm audit --json
+npm run build
+npm test
+npm run test:unit
+npm run test:live -- --reporter=list
+```
+
+The historical repair and earlier review record continues below.
 
 ## Review 3
 
