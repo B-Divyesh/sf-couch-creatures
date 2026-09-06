@@ -7,6 +7,7 @@ public claims with declared, observable regression tests.
 
 - Static implementation: `5f870be4914c166c5e74189859adf3bb4328dbf3`
 - Unchanged phone relay: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
+- Documentation verification record: `5c95034f650c8b72b3d0b77f7b1c54fe104a6ce9`
 - Live URL: <https://couch-creatures.sociobot.in>
 - Static deployment: Static Web Apps production deployment `4ac12cba-aa21-4c8b-bba0-3ffbd086cc31`
 
