@@ -76,6 +76,41 @@ test("@claim:demo-isolated the sample action uses only the demo namespace", asyn
   await expect(page.getByLabel(/Assist mode/)).toBeChecked();
 });
 
+test("@claim:fixed-demo-route Play a new route restores the same fixed sample board", async ({
+  page,
+}) => {
+  await page.goto("/demo");
+  const firstRoute = await demoState(page);
+  expect(firstRoute.seed).toBe("moss-postcard-17");
+
+  await page.evaluate((route) => {
+    localStorage.setItem(
+      "demo:couch-creatures:run",
+      JSON.stringify({ ...route, seed: "moss-legacy-route" }),
+    );
+  }, firstRoute);
+  await page.reload();
+  expect(await demoState(page)).toMatchObject({ seed: "moss-postcard-17" });
+
+  await page.getByRole("button", { name: "Watch sample rescue" }).click();
+  await expect(
+    page.getByRole("heading", { name: /\d+ of 12 creatures reached shelter/ }),
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Play a new route" }).click();
+
+  const restartedRoute = await demoState(page);
+  expect(restartedRoute).toMatchObject({
+    phase: "ready",
+    habitat: 0,
+    rescued: 0,
+    elapsed: 0,
+    seed: "moss-postcard-17",
+  });
+  expect(restartedRoute.lanterns).toEqual(firstRoute.lanterns);
+  expect(restartedRoute.creatures).toEqual(firstRoute.creatures);
+  await expect(page.getByText("Fixed sample route", { exact: true })).toBeVisible();
+});
+
 test("@claim:assist-mode assist widens lantern reach, slows storm strikes, and persists", async ({
   page,
 }) => {
@@ -220,6 +255,27 @@ test("@claim:four-players keyboard and touch controls operate all four lanterns"
   expect(state.lanterns[3]).not.toBe(510);
 });
 
+test("@claim:touch-button-size each player has two rendered 58px touch buttons", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/demo");
+  for (const player of ["one", "two", "three", "four"]) {
+    const buttons = [
+      page.getByRole("button", { name: `Move player ${player} left` }),
+      page.getByRole("button", { name: `Move player ${player} right` }),
+    ];
+    await expect(buttons[0]).toBeVisible();
+    await expect(buttons[1]).toBeVisible();
+    for (const button of buttons) {
+      const box = await button.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBe(58);
+      expect(box!.width).toBeGreaterThanOrEqual(58);
+    }
+  }
+});
+
 test("@claim:hazards-and-loss public storm collisions end a route and retry keeps its seed", async ({
   page,
 }) => {
@@ -318,6 +374,27 @@ test("@claim:local-only demo play uses only demo storage and never contacts the 
   expect(relayRequests).toEqual([]);
 });
 
+test("@claim:shared-device-origin real shared-device play makes no cross-origin requests", async ({
+  page,
+}) => {
+  const expectedOrigin = new URL(
+    process.env.COUCH_SITE_URL || "http://127.0.0.1:4173",
+  ).origin;
+  const external: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).origin !== expectedOrigin)
+      external.push(request.url());
+  });
+
+  await page.goto("/");
+  await page.keyboard.down("a");
+  await page.waitForTimeout(120);
+  await page.keyboard.up("a");
+  await page.getByRole("button", { name: "Move player two right" }).click();
+  await expect.poll(() => realState(page)).toMatchObject({ phase: "playing" });
+  expect(external).toEqual([]);
+});
+
 test("@claim:loaded-offline loaded shared-device play keeps working after the network drops", async ({
   browser,
 }) => {
@@ -351,6 +428,76 @@ test("@claim:free-play the game needs no account and exposes no ads, checkout, o
   await expect(
     page.getByText("Couch Creatures is free to play and has no purchases."),
   ).toBeVisible();
+});
+
+test("@claim:privacy-categories shared and phone play request no personal data or device permissions", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  await context.addInitScript(() => {
+    const calls: string[] = [];
+    Object.defineProperty(window, "__couchPrivacyCalls", {
+      value: calls,
+      configurable: true,
+    });
+    const patch = (owner: object | null | undefined, method: string, name: string) => {
+      if (!owner || typeof (owner as Record<string, unknown>)[method] !== "function")
+        return;
+      try {
+        Object.defineProperty(owner, method, {
+          configurable: true,
+          value: () => {
+            calls.push(name);
+            throw new Error(`${name} permission requested`);
+          },
+        });
+      } catch {}
+    };
+    patch(navigator.mediaDevices, "getUserMedia", "photo");
+    patch(navigator.geolocation, "getCurrentPosition", "location");
+    patch(navigator.geolocation, "watchPosition", "location");
+    patch(
+      (navigator as unknown as { contacts?: object }).contacts,
+      "select",
+      "contacts",
+    );
+  });
+  const page = await context.newPage();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Move player one right" }).click();
+  await expect(page.getByLabel(/Assist mode/)).toBeVisible();
+  await expect(page.locator('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Phone controls", exact: true }).click();
+  await expect(page.getByLabel("Room code")).toBeVisible();
+  const phoneFields = await page
+    .locator("input, textarea, select, [contenteditable=\"true\"]")
+    .evaluateAll((fields) =>
+      fields.map((field) => ({
+        type: (field as HTMLInputElement).type || field.tagName.toLowerCase(),
+        label:
+          field.id
+            ? document.querySelector(`label[for=\"${field.id}\"]`)?.textContent?.trim()
+            : "",
+      })),
+    );
+  expect(phoneFields).toEqual([{ type: "text", label: "Room code" }]);
+
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Privacy", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Couch Creatures does not ask for names, accounts, photos, contacts, or location.",
+    ),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __couchPrivacyCalls: string[] }).__couchPrivacyCalls,
+    ),
+  ).toEqual([]);
+  await context.close();
 });
 
 test("@claim:phone-room the live room relay forwards concurrent moves, advances its cursor, expires rooms, and enforces its allowance", async ({

@@ -62,6 +62,7 @@ remains.
 | 10 | Couch Creatures is free to play and has no purchases. | Pass |
 | 3 | Page not found | Pass |
 | 10 | The requested page does not exist. Return to the game. | Pass |
+| 14 | Reset demo and Play a new route begin the same fixed seed again. | Pass |
 
 ## README copy
 

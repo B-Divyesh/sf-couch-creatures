@@ -7,6 +7,13 @@
     "sandbox": "fresh browser context with a real run present; enter through the exact first-screen action, change and reset the sample, then leave demo and assert demo keys are gone while real run and assist data are unchanged"
   },
   {
+    "id": "fixed-demo-route",
+    "claim": "The fixed demo route stays on moss-postcard-17 after Play a new route.",
+    "where": "first-screen sample explanation, demo page, demo guide, README",
+    "test": "npm test -- --grep @claim:fixed-demo-route",
+    "sandbox": "fresh demo; record the initial seeded board, run the public rescue to its postcard, choose Play a new route, then assert the fixed seed and the same ready board return"
+  },
+  {
     "id": "end-screen",
     "claim": "A full rescue reaches a postcard with the truthful rescued total out of 12.",
     "where": "game end screen, README",
@@ -49,6 +56,13 @@
     "sandbox": "fresh demo game; assert four labelled touch pairs and keyboard/touch movement for players three and four"
   },
   {
+    "id": "touch-button-size",
+    "claim": "Each player has two 58px touch buttons on the game board.",
+    "where": "README",
+    "test": "npm test -- --grep @claim:touch-button-size",
+    "sandbox": "fresh demo at phone width; inspect the accessible left and right buttons for all four players, assert two per player and a rendered 58px minimum height"
+  },
+  {
     "id": "hazards-and-loss",
     "claim": "Moving hazards can end a route and the same seeded route can be retried.",
     "where": "game board, loss screen, README",
@@ -70,6 +84,13 @@
     "sandbox": "record movement, a real simulated loss, and reset in a fresh demo; assert no /api request, no cross-origin request, no phone-room action, and only demo-prefixed browser keys"
   },
   {
+    "id": "shared-device-origin",
+    "claim": "Shared-device play makes no cross-origin requests.",
+    "where": "README",
+    "test": "npm test -- --grep @claim:shared-device-origin",
+    "sandbox": "fresh non-demo shared-device game; record every browser request while two local players move with keyboard and touch, then assert every request uses the product origin"
+  },
+  {
     "id": "loaded-offline",
     "claim": "Loaded shared-device play keeps working if the network drops.",
     "where": "first-screen fact, README",
@@ -82,6 +103,13 @@
     "where": "first-screen fact, terms, README",
     "test": "npm test -- --grep @claim:free-play",
     "sandbox": "fresh homepage and terms route; assert the free-play statement and absence of ad, billing, checkout, and purchase UI"
+  },
+  {
+    "id": "privacy-categories",
+    "claim": "Couch Creatures does not ask for names, accounts, photos, contacts, or location.",
+    "where": "privacy page",
+    "test": "npm test -- --grep @claim:privacy-categories",
+    "sandbox": "fresh browser context; instrument browser photo/contact/location APIs before load, exercise shared-device and phone-controller pages, and assert no personal-data input or permission-capable API call occurs"
   },
   {
     "id": "frame-rate",

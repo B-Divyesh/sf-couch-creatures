@@ -42,6 +42,7 @@ const playerKeys = [
   ["arrowleft", "arrowright"],
 ];
 const playerColors = ["#b9d76c", "#db7250", "#82b7b9", "#f4efd9"];
+const fixedDemoSeed = "moss-postcard-17";
 const realtimeEndpoint = (
   document.querySelector<HTMLMetaElement>('meta[name="couch-realtime"]')
     ?.content || "/api"
@@ -598,8 +599,14 @@ function roomPanel() {
   return `<section class="room-panel" aria-labelledby="room-title"><div><p class="eyebrow">Phone controller</p><h2 id="room-title">Add a phone controller</h2><p>Start a room, scan its QR code, then choose a lantern on the phone.</p><button id="start-room" class="button primary">Start phone room</button><p id="room-status" aria-live="polite"></p></div><div id="qr-box" hidden><img id="room-qr" width="220" height="220" alt="QR code for joining this Couch Creatures phone controller room."><p>Room <strong id="room-code"></strong></p></div></section>`;
 }
 function gamePage() {
-  const saved = savedRun(),
-    seed = saved?.seed || (demoMode() ? "moss-postcard-17" : makeSeed());
+  let saved = savedRun();
+  // Repair demo snapshots created before the sample route was consistently
+  // fixed. A demo must never reopen as a route with a different seed.
+  if (demoMode() && saved && saved.seed !== fixedDemoSeed) {
+    localStorage.removeItem(key("run"));
+    saved = undefined;
+  }
+  const seed = saved?.seed || (demoMode() ? fixedDemoSeed : makeSeed());
   const coldStart = demoMode()
     ? ""
     : `<div class="cold-start"><p class="audience">For families and friends sharing one device, guide four creatures through storms before each shelter closes.</p><div class="cold-actions">${link("/demo", "Try it with sample data", "button primary")}<span>Starts a fixed sample route. Demo changes stay separate.</span></div><ul class="first-facts"><li>No account or child profile.</li><li>Loaded shared-device play works without a network.</li><li>Free, with no ads or purchases.</li></ul></div>`;
@@ -654,7 +661,9 @@ function gamePage() {
     update();
   });
   document.querySelector("#again")?.addEventListener("click", () => {
-    game.reset(makeSeed());
+    // A demo is a repeatable sample, including after its postcard action.
+    // Real play receives a fresh route for the next run.
+    game.reset(demoMode() ? fixedDemoSeed : makeSeed());
     update();
   });
   document
