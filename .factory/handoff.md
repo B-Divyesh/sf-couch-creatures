@@ -1,4 +1,50 @@
-# Couch Creatures verification 6 handoff
+# Couch Creatures repair 6 handoff
+
+## Repair 6 outcome
+
+**PASS.** Repair 6 closes `V6-001`. The visual source of truth now records
+58px touch buttons, matching the CSS, README, claim manifest, and all eight
+measured phone controls. The existing `@claim:touch-button-size` browser test
+checks the rendered outcome at 390px; no implementation change was needed.
+
+- Static implementation: `5f870be4914c166c5e74189859adf3bb4328dbf3`
+- Documentation repair: `6b78ccdcd6df2545f7389a7448c5f8a665d6f866`
+- Unchanged phone relay: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
+- Static deployment: `b7265e1f-fc32-48db-9d3e-b8fbc9a8cb79`
+- Live URL: <https://couch-creatures.sociobot.in>
+
+Clean setup used `npm ci`. Every one of the 20 exact commands in
+`.factory/claims.json` passed. `npm run test:all` passed 21 browser tests and
+5 relay tests; the browser run measured 60.13 fps. `npm audit --json` found
+zero vulnerabilities. `npm run build` produced `dist/` with 49.60 kB raw
+JavaScript (18.57 kB gzip), 8.88 kB CSS (2.59 kB gzip), and the 94,412-byte
+main image.
+
+After the production deployment, `npm run test:live -- --reporter=list`
+passed 21/21 and measured 60.15 fps. The URL verifier reported HTTPS 200,
+the expected title and language, one h1 and main landmark, complete image and
+button labels, and no console errors. Playwright Axe found zero serious or
+critical issues on all public routes and the styled 404. Lighthouse mobile
+scored 100 for Performance, Accessibility, Best Practices, and SEO; FCP and
+LCP were 1.1 seconds, TBT was 10 ms, CLS was 0, and transfer was 115 KiB.
+
+Fresh 1280×720 desktop and 390×844 phone contexts showed the playable board,
+job, audience, sample action, and three facts before scrolling. The phone had
+no horizontal overflow. The one-click sample kept its persistent demo label,
+and all eight buttons measured 64×58 CSS pixels. The public replay reached a
+6-of-12 postcard at 540.0167 seconds and a separate three-strike loss. Restart
+and Reset demo restored ready habitat one on `moss-postcard-17`. Start for real
+removed all demo keys and preserved a real-data marker. The demo made no API
+or cross-origin request and produced no console or page error.
+
+Evidence is under `/work/.evidence/couch-creatures-repair-6/`. The catalog
+description remains verb-first and 105 bytes; it was copied to
+`/work/.evidence/catalog-description.txt`.
+
+The product remains intentionally not installable as a PWA and does not claim
+offline reload. Loaded shared-device play after network loss is tested. The
+researched brief has no paid offer or required external integration. No known
+repair finding remains.
 
 ## Verification 6 outcome
 
