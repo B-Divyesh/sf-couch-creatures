@@ -33,7 +33,7 @@ Panels have squared corners, thick inset borders, and small moss growth
 notches. The game has a 60 Hz fixed simulation, short squash on a collected
 creature, and a restrained route ripple. Motion is removed under
 `prefers-reduced-motion`; feedback remains visible through color, text, and
-shape. Screen shake is not used. Touch buttons are 56px and placed below the
+shape. Screen shake is not used. Touch buttons are 58px and placed below the
 canvas.
 
 ## Art plan and provenance
