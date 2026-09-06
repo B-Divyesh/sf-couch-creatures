@@ -1,44 +1,81 @@
-# Couch Creatures review 4 handoff
+# Couch Creatures repair 5 handoff
 
-## Review 4
+## Outcome
 
-Fresh strict review on 2026-09-06 UTC: **FAIL** with two findings and four
-public claims without required declared coverage. No product code was changed.
-See `.factory/review-4.md` and `/work/.evidence/qa-report.md`.
+**PASS.** Repair 5 closes both Review 4 findings and covers the four omitted
+public claims with declared, observable regression tests.
 
-- Static implementation reviewed: `189bf09db9b59631c5902b819fc9f4b3f16ebaab`
-- Relay implementation reviewed: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
-- Documentation baseline reviewed: `208f55b4e7a5bfe97056d4783f10c209a6c6571e`
+- Static implementation: `5f870be4914c166c5e74189859adf3bb4328dbf3`
+- Unchanged phone relay: `b91da00c4b99851377fb5465f58ad8a3fd90e553`
 - Live URL: <https://couch-creatures.sociobot.in>
+- Static deployment: Static Web Apps production deployment `4ac12cba-aa21-4c8b-bba0-3ffbd086cc31`
 
-The complete desktop and phone loops reached the 6-of-12 postcard at 540.016
-seconds and the real storm-loss screen. Demo isolation, reset, real-data
-preservation, phone pairing, concurrency, rate limits, restart persistence,
-accessibility, reduced motion, legal routes, the designed HTTP 404, build,
-audit, and performance checks passed. All 16 declared claim commands passed.
+The job is a nine-minute shared-screen creature rescue. It is for families and
+friends sharing a device. The first action is **Try it with sample data**.
+Fresh 1280×720 and 390×844 HTTPS pages showed all three before scrolling, with
+the playable board visible and no page or console errors.
 
-Open findings:
+## What changed
 
-1. The demo changes from fixed seed `moss-postcard-17` to a random seed after
-   **Play a new route**, while the UI and README continue to call it fixed.
-2. The required claim manifest has no exact coverage for fixed-demo behavior,
-   the README's 58px touch-button measurement, the privacy page's named data
-   categories, or the README's real shared-device cross-origin statement.
+- **R4-001 fixed:** **Play a new route** preserves `moss-postcard-17` in demo
+  mode. Real play still gets a new random route. A valid legacy randomized
+  demo snapshot is discarded and rebuilt on the fixed sample before it can
+  reopen under the fixed label.
+- Added `@claim:fixed-demo-route`: a real sample rescue reaches its postcard,
+  then **Play a new route** returns the same ready board, lanterns, creatures,
+  and fixed seed. It also covers the legacy-snapshot recovery path.
+- **R4-002 fixed:** added exact outcome claims for the two 58px touch buttons
+  per player, the privacy page's named data categories, and no cross-origin
+  requests during real shared-device keyboard/touch play.
+- `.factory/demo.md` and `.factory/copy-audit.md` now state that Reset demo
+  and Play a new route both restart the same fixed seed.
 
-Verification commands:
+## Verification
 
-```sh
-npm ci
-npm audit --json
-npm run build
-npm test
-npm run test:unit
-npm run test:live -- --reporter=list
-```
+Clean setup began with `npm ci`. All 20 exact commands in
+`.factory/claims.json` passed, including the live phone-room command and the
+SQLite privacy-cleanup command. `npm test` and `npm run test:all` passed 21
+Playwright checks and 5 relay checks. `npm audit --json` reported zero
+vulnerabilities. `npm run build` produced `dist/` with 49.60 kB raw JavaScript
+(18.57 kB gzip) and 8.88 kB CSS (2.59 kB gzip).
 
-The historical repair and earlier review record continues below.
+Post-deploy `npm run test:live -- --reporter=list` passed 21/21. It included
+the real phone pairing, concurrent move, buffer, expiry, and 429/Retry-After
+paths. Active 390px play at 4× CPU slowdown measured 60.31 fps.
 
-## Review 3
+- `/opt/fleet/lib/verify-url.sh` passed on HTTPS: title, `lang=en`, one h1,
+  main landmark, image alternatives, labelled buttons, and no errors.
+- Playwright Axe passed with zero serious or critical findings on every public
+  route and the styled 404.
+- Lighthouse mobile: Performance 99, Accessibility 100, Best Practices 100,
+  SEO 100; FCP 1.7 s, LCP 1.7 s, TBT 0 ms, CLS 0, 115 KiB transfer.
+- Live HTML, JS, CSS, and `moss-rescue.webp` SHA-256 hashes match the built
+  candidate. The new JavaScript asset is `index-DRZ73yyd.js`.
+
+The live one-click sample retained **Demo — sample data, nothing is saved**,
+showed a populated board and eight touch buttons, reset to the fixed ready
+state, and left a pre-existing real-storage marker unchanged. Start for real
+removed every demo key and preserved that marker. The recorded rescue ended at
+540.0167 seconds with 6 of 12 sheltered; its restart returned to the same seed
+and the storm replay reached the actual loss screen. Evidence is in
+`/work/.evidence/couch-creatures-repair-5/`.
+
+## Deployment
+
+Only the static site was redeployed. The existing `sf-couch-creatures-realtime`
+SQLite relay, its `/data` volume, one-replica bound, environment, probes, and
+same-origin backend link were not changed. Production HTTPS returned 200 after
+the deployment.
+
+## Known limitations
+
+This is not a PWA and does not promise offline reload or update behavior.
+Loaded shared-device play continuing after network loss remains tested. There
+are no paid offers or external integrations in the researched brief.
+
+## Historical review and verification record
+
+### Review 3
 
 Fresh strict review on 2026-09-06 UTC: **PASS** with zero findings and zero untested public claims. Static candidate `189bf09db9b59631c5902b819fc9f4b3f16ebaab` matched live JavaScript, CSS, and artwork. Documentation baseline is `6a6d9b162d0811bceee8069ef9dddeb4629bd820`; intervening commits are report-only. The live relay reports `b91da00c4b99851377fb5465f58ad8a3fd90e553`.
 
