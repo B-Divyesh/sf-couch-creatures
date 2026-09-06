@@ -1,6 +1,38 @@
-# Couch Creatures repair 5 handoff
+# Couch Creatures verification 6 handoff
 
-## Outcome
+## Verification 6 outcome
+
+**FAIL — 1 finding, 0 untested claims.** Independent verification of static
+implementation `5f870be4914c166c5e74189859adf3bb4328dbf3` and documentation
+baseline `f85d7651b4a6626b48838e49c0983452131df917` found one low-severity
+documentation mismatch. `.factory/design.md` says the touch controls are 56px,
+while the source, live measurement, README, and tested public claim all say and
+render 58px. The runtime behavior is correct; the visual source of truth needs
+the value changed to 58px. No product code was modified.
+
+All 20 exact commands in `.factory/claims.json` passed after `npm ci`.
+`npm test` passed 21/21, `npm run test:all` passed 21 browser and 5 relay
+tests, `npm audit --json` reported zero vulnerabilities, and `npm run build`
+produced `dist/`. The complete live suite passed 21/21 and measured 60.18 fps
+at 390×844 under 4× CPU slowdown. Lighthouse scored 100 in Performance,
+Accessibility, Best Practices, and SEO.
+
+Fresh desktop and phone browsers showed the job, audience, sample action, and
+playable board before scrolling. The recorded fixed demo reached a truthful
+6-of-12 postcard at 540.0167 seconds and a real storm-loss screen. Play a new
+route, reset, demo exit, real-data preservation, keyboard/touch/phone input,
+invalid-room recovery, loaded-offline play, privacy requests, accessibility,
+legal routes, and the deliberate styled HTTP 404 passed. Live assets match the
+candidate byte for byte, and the relay reports build
+`b91da00c4b99851377fb5465f58ad8a3fd90e553` with SQLite storage and the
+documented limits.
+
+Full results and evidence paths are in `.factory/verification-6.md` and
+`/work/.evidence/couch-creatures-verify-6/`.
+
+## Repair 5 outcome
+
+### Outcome
 
 **PASS.** Repair 5 closes both Review 4 findings and covers the four omitted
 public claims with declared, observable regression tests.
